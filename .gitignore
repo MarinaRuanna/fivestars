@@ -1,0 +1,31 @@
+# Binário
+/fivestars
+*.exe
+
+# Go
+/vendor/
+*.test
+*.out
+coverage.html
+
+# Ambiente e secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build e cache
+/dist/
+/tmp/
+*.log

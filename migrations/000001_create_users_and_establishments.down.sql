@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS establishments;
+DROP TABLE IF EXISTS users;
