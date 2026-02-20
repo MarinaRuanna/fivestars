@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"fivestars/internal/infra/auth"
 	"fivestars/internal/infra/config"
 	"fivestars/internal/infra/controller"
 	"fivestars/internal/infra/repository"
@@ -24,6 +25,9 @@ func main() {
 	if cfg.DatabaseURL == "" {
 		log.Fatal("DATABASE_URL is required")
 	}
+	if cfg.JWTSecret == "" {
+		log.Fatal("JWT_SECRET is required for auth")
+	}
 
 	ctx := context.Background()
 	pool, err := repository.NewPool(ctx, cfg.DatabaseURL)
@@ -39,8 +43,11 @@ func main() {
 	}
 
 	establishmentRepo := repository.NewEstablishmentRepository(pool)
+	userRepo := repository.NewUserRepository(pool)
 	healthHandler := controller.NewHealthHandler(pool)
 	establishmentsHandler := controller.NewEstablishmentsHandler(establishmentRepo)
+	authHandler := controller.NewAuthHandler(userRepo, cfg.JWTSecret)
+	userHandler := controller.NewUserHandler(userRepo)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +59,9 @@ func main() {
 	mux.HandleFunc("/establishments", func(w http.ResponseWriter, r *http.Request) {
 		establishmentsHandler.List(w, r)
 	})
+	mux.HandleFunc("POST /auth/register", authHandler.Register)
+	mux.HandleFunc("POST /auth/login", authHandler.Login)
+	mux.Handle("GET /users/me", auth.RequireAuth(cfg.JWTSecret)(http.HandlerFunc(userHandler.Me)))
 
 	withCORS := controller.CORS(mux)
 	addr := fmt.Sprintf(":%d", cfg.Port)
