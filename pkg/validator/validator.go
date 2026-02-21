@@ -3,16 +3,16 @@ package validator
 import (
 	"errors"
 
-	playground "github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/multierr"
 )
 
 func Validate(value interface{}) error {
-	v := playground.New()
+	v := validator.New()
 
 	err := v.Struct(value)
 	if err != nil {
-		var validatorErrors playground.ValidationErrors
+		var validatorErrors validator.ValidationErrors
 		if errors.As(err, &validatorErrors) {
 			return handlerValidationErrors(validatorErrors)
 		}
@@ -21,7 +21,7 @@ func Validate(value interface{}) error {
 	return nil
 }
 
-func handlerValidationErrors(err playground.ValidationErrors) error {
+func handlerValidationErrors(err validator.ValidationErrors) error {
 	var errorsMessage error
 	for _, ex := range err {
 		errorsMessage = multierr.Append(errorsMessage, ex)
