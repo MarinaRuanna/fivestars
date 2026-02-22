@@ -4,32 +4,32 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"fivestars/internal/application/usecases"
+	"fivestars/internal/application"
 )
 
-// EstablishmentsHandler handles GET /establishments.
+// EstablishmentsController handles GET /establishments.
 // ⭐ REFATORADO: Agora apenas ORQUESTRA HTTP + delegação para usecase
-type EstablishmentsHandler struct {
-	listEstablishmentsUseCase *usecases.ListEstablishmentsUseCase
+type EstablishmentsController struct {
+	estabService application.EstablishmentService
 }
 
-// NewEstablishmentsHandler returns a new EstablishmentsHandler.
-func NewEstablishmentsHandler(
-	listEstablishmentsUseCase *usecases.ListEstablishmentsUseCase,
-) *EstablishmentsHandler {
-	return &EstablishmentsHandler{listEstablishmentsUseCase: listEstablishmentsUseCase}
+// NewEstablishmentsController returns a new EstablishmentsController.
+func NewEstablishmentsController(
+	estabService application.EstablishmentService,
+) *EstablishmentsController {
+	return &EstablishmentsController{estabService: estabService}
 }
 
 // List returns all establishments as JSON.
 // ⭐ REFATORADO: Handler apenas chama usecase + formata resposta
-func (h *EstablishmentsHandler) List(w http.ResponseWriter, r *http.Request) {
+func (c *EstablishmentsController) ListEstablishments(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// 1. DELEGAR PARA USECASE
-	items, err := h.listEstablishmentsUseCase.Execute(r.Context())
+	items, err := c.estabService.ListEstablishments(r.Context())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

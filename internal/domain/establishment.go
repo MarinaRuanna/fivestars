@@ -14,10 +14,10 @@ type EstablishmentRepository interface {
 
 // Establishment represents a place that can be checked in and reviewed.
 type Establishment struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
+	ID        string    `json:"id" validade:"required"`
+	Name      string    `json:"name" validade:"required"`
 	Slug      string    `json:"slug"`
-	Category  string    `json:"category"`
+	Category  string    `json:"category" validade:"required"`
 	Address   string    `json:"address,omitempty"`
 	Lat       *float64  `json:"lat,omitempty"`
 	Lng       *float64  `json:"lng,omitempty"`

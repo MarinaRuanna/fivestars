@@ -3,9 +3,9 @@ package inbound
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"fivestars/internal/infra/adapters/inbound/controller"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // Handlers is a collection of HTTP handlers used to wire routes.
@@ -13,7 +13,7 @@ type Handlers struct {
 	Health         http.Handler
 	Auth           *controller.AuthHandler
 	User           *controller.UserHandler
-	Establishments *controller.EstablishmentsHandler
+	Establishments *controller.EstablishmentsController
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
@@ -42,7 +42,7 @@ func CreateChiRoutes(h Handlers) http.Handler {
 
 	// Establishments: list endpoint
 	if h.Establishments != nil {
-		r.Get("/establishments", h.Establishments.List)
+		r.Get("/establishments", h.Establishments.ListEstablishments)
 	}
 
 	return r

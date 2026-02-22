@@ -1,4 +1,4 @@
-package usecases
+package application
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fivestars/internal/domain"
 	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/auth"
+	"fivestars/internal/infra/config"
 )
 
 // LoginUserUseCase implements user login business logic.
@@ -17,10 +18,10 @@ type LoginUserUseCase struct {
 }
 
 // NewLoginUserUseCase creates a new LoginUserUseCase.
-func NewLoginUserUseCase(userRepo domain.UserRepository, jwtSecret string) *LoginUserUseCase {
+func NewLoginUserUseCase(userRepo domain.UserRepository, jwtSecret config.JWTConfig) *LoginUserUseCase {
 	return &LoginUserUseCase{
 		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		jwtSecret: jwtSecret.Secret,
 	}
 }
 

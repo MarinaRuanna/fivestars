@@ -28,7 +28,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	// ====== START SERVER IN GOROUTINE ======
-	log.Printf("Starting server on port %d\n", app.Config.Port)
+	log.Printf("Starting server on port %d\n", app.Config.AppPort)
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- app.Start(ctx)

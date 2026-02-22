@@ -16,7 +16,7 @@ type UserRepository interface {
 
 // User represents a platform user.
 type User struct {
-	ID           string    `json:"id"`
+	ID           string    `json:"id_user" validate:"required,uuid4"`
 	Email        string    `json:"email" validate:"required,email"`
 	PasswordHash string    `json:"-"` // nunca expor em JSON
 	Name         string    `json:"name" validate:"required,min=1"`

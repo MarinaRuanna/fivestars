@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"fivestars/internal/application/usecases"
+	"fivestars/internal/application"
 	"fivestars/internal/infra/auth"
 )
 
 // UserHandler trata GET /users/me (requer autenticação).
 // ⭐ REFATORADO: Agora apenas ORQUESTRA HTTP + delegação para usecase
 type UserHandler struct {
-	getUserUseCase *usecases.GetUserUseCase
+	getUserUseCase *application.GetUserUseCase
 }
 
 // NewUserHandler cria um UserHandler.
-func NewUserHandler(getUserUseCase *usecases.GetUserUseCase) *UserHandler {
+func NewUserHandler(getUserUseCase *application.GetUserUseCase) *UserHandler {
 	return &UserHandler{getUserUseCase: getUserUseCase}
 }
 
@@ -31,7 +31,7 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userID := auth.UserIDFromContext(r.Context())
 
 	// 2. DELEGAR PARA USECASE
-	output, err := h.getUserUseCase.Execute(r.Context(), usecases.GetUserInput{UserID: userID})
+	output, err := h.getUserUseCase.Execute(r.Context(), application.GetUserInput{UserID: userID})
 	if err != nil {
 		// Format error response properly
 		w.Header().Set("Content-Type", "application/json")

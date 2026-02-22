@@ -7,13 +7,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"fivestars/internal/application/usecases"
+	"fivestars/internal/application"
 	"fivestars/internal/infra/adapters/inbound"
 	"fivestars/internal/infra/adapters/inbound/controller"
-	"fivestars/internal/infra/adapters/outbound/repository"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/establishments"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/users"
 	"fivestars/internal/infra/config"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // App encapsula toda a aplicação e seu ciclo de vida
@@ -34,43 +36,44 @@ type App struct {
 // 6. Rotas
 func BuildApp(ctx context.Context) (*App, error) {
 	// ====== 1. LOAD CONFIG ======
-	cfg := config.Load()
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
 	}
 
 	// ====== 2. DATABASE POOL ======
-	pool, err := repository.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := postgres.NewPool(ctx, cfg.DatabasePostgres)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DB pool: %w", err)
+		return nil, fmt.Errorf("init database: %w", err)
 	}
 
 	// ====== 3. REPOSITORIES ======
-	userRepo := repository.NewUserRepository(pool)
-	estabRepo := repository.NewEstablishmentRepository(pool)
+	userRepo := users.NewUserRepository(pool)
+	estabRepo := establishments.NewEstablishmentRepository(pool)
 
-	// ====== 4. USECASES (Application Layer) ======
-	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
-	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
-	getUserUC := usecases.NewGetUserUseCase(userRepo)
-	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
+	// ====== 4. USECASES ======
+	registerUserUC := application.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
+	loginUserUC := application.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
+	getUserUC := application.NewGetUserUseCase(userRepo)
+	listEstabUC := application.NewEstablishmentService(estabRepo)
 
-	// ====== 5. HANDLERS (Inbound Adapters) ======
+	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsHandler(listEstabUC)
+	estabHandler := controller.NewEstablishmentsController(listEstabUC)
 
-	// ====== 6. MOUNT ROUTES ======
-	handlers := inbound.Handlers{
+	// ====== 6. ROUTES ======
+	controllers := inbound.Handlers{
 		Health:         healthHandler,
 		Auth:           authHandler,
 		User:           userHandler,
 		Establishments: estabHandler,
 	}
-	router := inbound.CreateChiRoutes(handlers)
 
-	// ====== 6. RETURN APP ======
+	router := inbound.CreateChiRoutes(controllers)
+
+	// ====== RETURN APP ======
 	return &App{
 		Config: cfg,
 		DB:     pool,
@@ -81,7 +84,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 // Start: Inicia servidor HTTP com suporte a graceful shutdown via context
 func (a *App) Start(ctx context.Context) error {
 	a.server = &http.Server{
-		Addr:         ":" + strconv.Itoa(a.Config.Port),
+		Addr:         ":" + strconv.Itoa(a.Config.AppPort),
 		Handler:      a.Router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

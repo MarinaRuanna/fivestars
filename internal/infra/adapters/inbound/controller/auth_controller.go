@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"fivestars/internal/application/usecases"
+	"fivestars/internal/application"
 	"fivestars/internal/domain/customerror"
 )
 
 // AuthHandler trataPOST /auth/register e POST /auth/login.
 // ⭐ REFATORADO: Agora apenas ORQUESTRA HTTP + delegação para usecases
 type AuthHandler struct {
-	registerUserUseCase *usecases.RegisterUserUseCase
-	loginUserUseCase    *usecases.LoginUserUseCase
+	registerUserUseCase *application.RegisterUserUseCase
+	loginUserUseCase    *application.LoginUserUseCase
 }
 
 // NewAuthHandler cria um AuthHandler.
 func NewAuthHandler(
-	registerUserUseCase *usecases.RegisterUserUseCase,
-	loginUserUseCase *usecases.LoginUserUseCase,
+	registerUserUseCase *application.RegisterUserUseCase,
+	loginUserUseCase *application.LoginUserUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
 		registerUserUseCase: registerUserUseCase,
@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. DELEGAR PARA USECASE (toda a lógica de negócio)
-	output, err := h.registerUserUseCase.Execute(r.Context(), usecases.RegisterUserInput{
+	output, err := h.registerUserUseCase.Execute(r.Context(), application.RegisterUserInput{
 		Email:    req.Email,
 		Password: req.Password,
 		Name:     req.Name,
@@ -76,7 +76,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. DELEGAR PARA USECASE (toda a lógica de negócio)
-	output, err := h.loginUserUseCase.Execute(r.Context(), usecases.LoginUserInput{
+	output, err := h.loginUserUseCase.Execute(r.Context(), application.LoginUserInput{
 		Email:    req.Email,
 		Password: req.Password,
 	})

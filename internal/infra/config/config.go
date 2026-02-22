@@ -2,40 +2,64 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"strconv"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 // Config holds application configuration from environment.
 type Config struct {
-	DatabaseURL string
-	Port        int
-	JWTSecret   string
+	AppPort          int            `envconfig:"appPort" required:"true" default:"8080"`
+	DatabasePostgres PostgresConfig `envconfig:"postgres" required:"true"`
+	JWTSecret        JWTConfig      `envconfig:"jwt" required:"true"`
+}
+
+type PostgresConfig struct {
+	Host     string `envconfig:"host" required:"true"`
+	Port     int    `envconfig:"port" required:"true"`
+	User     string `envconfig:"user" required:"true"`
+	Password string `envconfig:"password" required:"true"`
+	Database string `envconfig:"database" required:"true"`
+	SSLMode  string `envconfig:"sslmode"`
+	MaxConns int32  `envconfig:"maxConns"`
+	MinConns int32  `envconfig:"minConns"`
+}
+
+type JWTConfig struct {
+	Secret string `envconfig:"secret" required:"true"`
+}
+
+func (pc PostgresConfig) DSN() string {
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s&pool_max_conns=%d&pool_min_conns=%d",
+		pc.User,
+		pc.Password,
+		pc.Host,
+		pc.Port,
+		pc.Database,
+		pc.SSLMode,
+		pc.MaxConns,
+		pc.MinConns)
+
+	return dsn
 }
 
 // Load reads config from environment variables.
-func Load() *Config {
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
-	if port == 0 {
-		port = 8080
+func Load() (*Config, error) {
+	var cfg Config
+	if err := envconfig.Process("", &cfg); err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	return &Config{
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		Port:        port,
-		JWTSecret:   os.Getenv("JWT_SECRET"),
-	}
+
+	return &cfg, nil
 }
 
 // Validate checks if required config values are set
 func (c *Config) Validate() error {
-	if c.DatabaseURL == "" {
-		return fmt.Errorf("DATABASE_URL environment variable is required")
+	if c.DatabasePostgres == (PostgresConfig{}) {
+		return fmt.Errorf("DATABASE_POSTGRES config is required")
 	}
-	if c.JWTSecret == "" {
-		return fmt.Errorf("JWT_SECRET environment variable is required")
-	}
-	if c.Port <= 0 || c.Port > 65535 {
-		return fmt.Errorf("invalid PORT: must be between 1 and 65535")
+	if c.JWTSecret == (JWTConfig{}) {
+		return fmt.Errorf("JWT_SECRET config is required")
 	}
 	return nil
 }

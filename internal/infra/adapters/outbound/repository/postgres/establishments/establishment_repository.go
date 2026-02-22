@@ -1,4 +1,4 @@
-package repository
+package establishments
 
 import (
 	"context"
@@ -33,15 +33,20 @@ func (r *establishmentRepository) List(ctx context.Context) ([]*domain.Establish
 
 	var list []*domain.Establishment
 	for rows.Next() {
-		var row EstablishmentRow
+		var estabDTO EstablishmentDTO
 		err := rows.Scan(
-			&row.ID, &row.Name, &row.Slug, &row.Category, &row.Address,
-			&row.Lat, &row.Lng, &row.QRCode, &row.CreatedAt, &row.UpdatedAt,
+			&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, row.ToDomain())
+		estab, err := estabDTO.ToDomain()
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, estab)
 	}
 	return list, rows.Err()
 }

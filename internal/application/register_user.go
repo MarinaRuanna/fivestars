@@ -1,4 +1,4 @@
-package usecases
+package application
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fivestars/internal/domain"
 	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/auth"
+	"fivestars/internal/infra/config"
 )
 
 // RegisterUserUseCase implements user registration business logic.
@@ -17,10 +18,10 @@ type RegisterUserUseCase struct {
 }
 
 // NewRegisterUserUseCase creates a new RegisterUserUseCase.
-func NewRegisterUserUseCase(userRepo domain.UserRepository, jwtSecret string) *RegisterUserUseCase {
+func NewRegisterUserUseCase(userRepo domain.UserRepository, jwtSecret config.JWTConfig) *RegisterUserUseCase {
 	return &RegisterUserUseCase{
 		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		jwtSecret: jwtSecret.Secret,
 	}
 }
 
