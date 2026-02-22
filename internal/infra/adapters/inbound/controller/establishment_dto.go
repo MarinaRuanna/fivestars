@@ -9,7 +9,7 @@ import (
 // Expõe apenas os campos desejados na resposta HTTP (proteção dos dados internos).
 // QRCode não é exposto na API pública.
 type EstablishmentResponse struct {
-	ID        string   `json:"id"`
+	ID        string   `json:"establishment_id"`
 	Name      string   `json:"name"`
 	Slug      string   `json:"slug"`
 	Category  string   `json:"category"`

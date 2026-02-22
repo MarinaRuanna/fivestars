@@ -9,14 +9,14 @@ import (
 
 //go:generate go run go.uber.org/mock/mockgen -destination mock_domain/user_repository.go -package mock_domain . UserRepository
 type UserRepository interface {
-	Create(ctx context.Context, u *User) error
-	GetByID(ctx context.Context, id string) (*User, error)
+	Create(ctx context.Context, user *User) error
+	GetByID(ctx context.Context, userID string) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 }
 
 // User represents a platform user.
 type User struct {
-	ID           string    `json:"id_user" validate:"required,uuid4"`
+	ID           string    `json:"user_id" validate:"required,uuid4"`
 	Email        string    `json:"email" validate:"required,email"`
 	PasswordHash string    `json:"-"` // nunca expor em JSON
 	Name         string    `json:"name" validate:"required,min=1"`

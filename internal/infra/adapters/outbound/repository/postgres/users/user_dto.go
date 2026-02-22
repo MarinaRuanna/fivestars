@@ -11,7 +11,7 @@ import (
 
 // UserDTO representa uma linha da tabela users.
 type UserDTO struct {
-	ID           pgtype.UUID `json:"id_user" validate:"required,uuid4"`
+	ID           pgtype.UUID `json:"user_id" validate:"required,uuid4"`
 	Email        string      `json:"email" validate:"required,email"`
 	PasswordHash string      `json:"-"` // nunca expor em JSON
 	Name         string      `json:"name" validate:"required"`

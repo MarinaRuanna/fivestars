@@ -13,6 +13,6 @@ func WithUserID(ctx context.Context, userID string) context.Context {
 
 // UserIDFromContext retorna o user_id do context ou "" se não estiver autenticado.
 func UserIDFromContext(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
+	userID, _ := ctx.Value(userIDKey).(string)
+	return userID
 }

@@ -25,26 +25,26 @@ func NewUserRepository(pool *pgxpool.Pool) domain.UserRepository {
 
 // Create persiste um novo usuário. O ID e timestamps são gerados pelo banco.
 func (r *userRepository) Create(ctx context.Context, u *domain.User) error {
-	var id pgtype.UUID
+	var userID pgtype.UUID
 	err := r.pool.QueryRow(ctx, `
 		INSERT INTO users (email, password_hash, name, avatar_url, level)
 		VALUES ($1, $2, $3, NULLIF($4, ''), $5)
 		RETURNING id, created_at, updated_at
-	`, u.Email, u.PasswordHash, u.Name, u.AvatarURL, u.Level).Scan(&id, &u.CreatedAt, &u.UpdatedAt)
+	`, u.Email, u.PasswordHash, u.Name, u.AvatarURL, u.Level).Scan(&userID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return customerror.NewConflictError("email já cadastrado")
 		}
 		return err
 	}
-	u.ID = uuidToString(id)
+	u.ID = uuidToString(userID)
 	return nil
 }
 
 // GetByID retorna o usuário pelo ID ou nil se não existir.
-func (r *userRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
+func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.User, error) {
 	var dto UserDTO
-	uuid, err := parseUUID(id)
+	uuid, err := parseUUID(userID)
 	if err != nil {
 		return nil, err
 	}

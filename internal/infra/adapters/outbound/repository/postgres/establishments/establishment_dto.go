@@ -9,7 +9,7 @@ import (
 // EstablishmentDTO representa uma linha da tabela establishments.
 // Isola o formato do banco do domínio; o repositório faz a conversão DTO → Domain.
 type EstablishmentDTO struct {
-	ID        string    `json:"id_establishment" validate:"required,uuid4"`
+	ID        string    `json:"establishment_id" validate:"required,uuid4"`
 	Name      string    `json:"name" validate:"required"`
 	Slug      string    `json:"slug"`
 	Category  string    `json:"category" validate:"required"`
