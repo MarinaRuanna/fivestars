@@ -14,16 +14,30 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 }
 
-// User represents a platform user.
 type User struct {
-	ID           string    `json:"user_id" validate:"required,uuid4"`
-	Email        string    `json:"email" validate:"required,email"`
-	PasswordHash string    `json:"-"` // nunca expor em JSON
-	Name         string    `json:"name" validate:"required,min=1"`
-	AvatarURL    string    `json:"avatar_url,omitempty"`
-	Level        int       `json:"level"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string
+	Email        string `validate:"required,email"`
+	PasswordHash string
+	Name         string `validate:"required,min=1"`
+	AvatarURL    string `validate:"omitempty,url"`
+	Level        int
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func NewUser(email, passwordHash, name string) (*User, error) {
+	now := time.Now().UTC()
+	user := &User{
+		Email:        email,
+		PasswordHash: passwordHash,
+		Name:         name,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (u *User) Validate() error {

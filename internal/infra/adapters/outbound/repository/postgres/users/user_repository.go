@@ -13,12 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// userRepository implements domain.UserRepository.
 type userRepository struct {
 	pool *pgxpool.Pool
 }
 
-// NewUserRepository returns a new UserRepository.
 func NewUserRepository(pool *pgxpool.Pool) domain.UserRepository {
 	return &userRepository{pool: pool}
 }
@@ -41,7 +39,6 @@ func (r *userRepository) Create(ctx context.Context, u *domain.User) error {
 	return nil
 }
 
-// GetByID retorna o usuário pelo ID ou nil se não existir.
 func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.User, error) {
 	var dto UserDTO
 	uuid, err := parseUUID(userID)
@@ -70,7 +67,6 @@ func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.Us
 	return user, nil
 }
 
-// GetByEmail retorna o usuário pelo email ou nil se não existir.
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var dto UserDTO
 	err := r.pool.QueryRow(ctx, `

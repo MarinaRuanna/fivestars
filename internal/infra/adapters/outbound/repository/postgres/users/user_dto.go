@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// UserDTO representa uma linha da tabela users.
 type UserDTO struct {
 	ID           pgtype.UUID `json:"user_id" validate:"required,uuid4"`
 	Email        string      `json:"email" validate:"required,email"`
@@ -21,7 +20,6 @@ type UserDTO struct {
 	UpdatedAt    time.Time   `json:"updated_at" validate:"required"`
 }
 
-// ToDomain converte o DTO de persistência em entidade de domínio.
 func (dto *UserDTO) ToDomain() (*domain.User, error) {
 	user := &domain.User{
 		ID:           uuidToString(dto.ID),

@@ -13,7 +13,7 @@ type Handlers struct {
 	Health         http.Handler
 	Auth           *controller.AuthHandler
 	User           *controller.UserHandler
-	Establishments *controller.EstablishmentsController
+	Establishments *controller.EstablishmentsHandler
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
@@ -37,7 +37,7 @@ func CreateChiRoutes(h Handlers) http.Handler {
 
 	// Users: /users/me requires Authorization header
 	if h.User != nil {
-		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Get("/users/me", h.User.Me)
+		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Get("/users/me", h.User.GetUser)
 	}
 
 	// Establishments: list endpoint

@@ -6,8 +6,6 @@ import (
 	"fivestars/internal/domain"
 )
 
-// EstablishmentDTO representa uma linha da tabela establishments.
-// Isola o formato do banco do domínio; o repositório faz a conversão DTO → Domain.
 type EstablishmentDTO struct {
 	ID        string    `json:"establishment_id" validate:"required,uuid4"`
 	Name      string    `json:"name" validate:"required"`
@@ -21,7 +19,6 @@ type EstablishmentDTO struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// ToDomain converte o DTO de persistência em entidade de domínio.
 func (r *EstablishmentDTO) ToDomain() (*domain.Establishment, error) {
 	estab := &domain.Establishment{
 		ID:        r.ID,

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"fivestars/internal/application"
+	"fivestars/internal/application/usecases"
 	"fivestars/internal/infra/adapters/inbound"
 	"fivestars/internal/infra/adapters/inbound/controller"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
@@ -52,16 +52,16 @@ func BuildApp(ctx context.Context) (*App, error) {
 	estabRepo := establishments.NewEstablishmentRepository(pool)
 
 	// ====== 4. USECASES ======
-	registerUserUC := application.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
-	loginUserUC := application.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
-	getUserUC := application.NewGetUserUseCase(userRepo)
-	listEstabUC := application.NewEstablishmentService(estabRepo)
+	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
+	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
+	getUserUC := usecases.NewGetUserUseCase(userRepo)
+	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 
 	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsController(listEstabUC)
+	estabHandler := controller.NewEstablishmentsHandler(listEstabUC)
 
 	// ====== 6. ROUTES ======
 	controllers := inbound.Handlers{
