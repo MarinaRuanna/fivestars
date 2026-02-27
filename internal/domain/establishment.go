@@ -10,6 +10,8 @@ import (
 //go:generate go run go.uber.org/mock/mockgen -destination mock_domain/establishment_repository.go -package mock_domain . EstablishmentRepository
 type EstablishmentRepository interface {
 	List(ctx context.Context) ([]Establishment, error)
+	GetByID(ctx context.Context, id string) (*Establishment, error)
+	DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error)
 }
 
 type Establishment struct {

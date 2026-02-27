@@ -11,6 +11,7 @@ import (
 	"fivestars/internal/infra/adapters/inbound"
 	"fivestars/internal/infra/adapters/inbound/controller"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/checkins"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/establishments"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/users"
 	"fivestars/internal/infra/config"
@@ -50,18 +51,22 @@ func BuildApp(ctx context.Context) (*App, error) {
 	// ====== 3. REPOSITORIES ======
 	userRepo := users.NewUserRepository(pool)
 	estabRepo := establishments.NewEstablishmentRepository(pool)
+	checkinRepo := checkins.NewCheckinRepository(pool)
 
 	// ====== 4. USECASES ======
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
 	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
 	getUserUC := usecases.NewGetUserUseCase(userRepo)
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
+	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
+	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)
 
 	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
 	estabHandler := controller.NewEstablishmentsHandler(listEstabUC)
+	checkinsHandler := controller.NewCheckinsHandler(createCheckinUC, listCheckinsUC)
 
 	// ====== 6. ROUTES ======
 	controllers := inbound.Handlers{
@@ -69,6 +74,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 		Auth:           authHandler,
 		User:           userHandler,
 		Establishments: estabHandler,
+		Checkins:       checkinsHandler,
 	}
 
 	router := inbound.CreateChiRoutes(controllers)

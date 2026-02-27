@@ -14,6 +14,7 @@ type Handlers struct {
 	Auth           *controller.AuthHandler
 	User           *controller.UserHandler
 	Establishments *controller.EstablishmentsHandler
+	Checkins       *controller.CheckinsHandler
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
@@ -43,6 +44,12 @@ func CreateChiRoutes(h Handlers) http.Handler {
 	// Establishments: list endpoint
 	if h.Establishments != nil {
 		r.Get("/establishments", h.Establishments.ListEstablishments)
+	}
+
+	// Checkins: create (protected) and list user's checkins
+	if h.Checkins != nil {
+		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Post("/checkins", h.Checkins.CreateCheckin)
+		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Get("/checkins/me", h.Checkins.ListMyCheckins)
 	}
 
 	return r

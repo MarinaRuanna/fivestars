@@ -46,3 +46,39 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 	}
 	return list, rows.Err()
 }
+
+func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID string) (*domain.Establishment, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, name, slug, category, address, lat, lng, qr_code, created_at, updated_at
+		FROM establishments
+		WHERE id = $1
+	`, establishmentID)
+
+	var estabDTO EstablishmentDTO
+	if err := row.Scan(
+		&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	estab, err := estabDTO.ToDomain()
+	if err != nil {
+		return nil, err
+	}
+	return estab, nil
+}
+
+func (r *establishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT ST_DistanceSphere(ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) as meters
+		FROM establishments
+		WHERE id = $3
+	`, lng, lat, id)
+
+	var meters float64
+	if err := row.Scan(&meters); err != nil {
+		return 0, err
+	}
+	return meters, nil
+}
