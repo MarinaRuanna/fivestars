@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"fivestars/internal/domain"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -23,7 +24,7 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 		ORDER BY name
 	`)
 	if err != nil {
-		return nil, err
+		return nil, postgres.MapError(err, "establishment")
 	}
 	defer rows.Close()
 
@@ -35,7 +36,7 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, postgres.MapError(err, "establishment")
 		}
 		estab, err := estabDTO.ToDomain()
 		if err != nil {
@@ -44,7 +45,10 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 
 		list = append(list, *estab)
 	}
-	return list, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, postgres.MapError(err, "establishment")
+	}
+	return list, nil
 }
 
 func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID string) (*domain.Establishment, error) {
@@ -59,7 +63,10 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 		&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
 		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 	); err != nil {
-		return nil, err
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "establishment")
 	}
 
 	estab, err := estabDTO.ToDomain()
@@ -78,7 +85,7 @@ func (r *establishmentRepository) DistanceTo(ctx context.Context, id string, lat
 
 	var meters float64
 	if err := row.Scan(&meters); err != nil {
-		return 0, err
+		return 0, postgres.MapError(err, "establishment")
 	}
 	return meters, nil
 }

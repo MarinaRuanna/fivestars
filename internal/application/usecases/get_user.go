@@ -38,7 +38,7 @@ type GetUserOutput struct {
 
 func (uc *getUserUseCase) Execute(ctx context.Context, userID string) (*domain.User, error) {
 	if userID == "" {
-		return nil, fmt.Errorf("user ID is required")
+		return nil, customerror.NewUnauthorizedError("user not authenticated")
 	}
 
 	user, err := uc.userRepo.GetByID(ctx, userID)

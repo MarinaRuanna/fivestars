@@ -1,14 +1,12 @@
 package customerror
 
-import "net/http"
-
 const ValidationErrorType ErrorType = "validation_error"
 
 func NewValidationError(message string) error {
 	return &CustomError{
 		messagePrefix: "Validation error - Message:",
 		message:       message,
-		statusCode:    http.StatusBadRequest,
+		statusCode:    400,
 		errorType:     ValidationErrorType,
 	}
 }

@@ -77,7 +77,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 		Checkins:       checkinsHandler,
 	}
 
-	router := inbound.CreateChiRoutes(controllers)
+	router := inbound.CreateChiRoutes(controllers, cfg.JWTSecret.Secret)
 
 	// ====== RETURN APP ======
 	return &App{

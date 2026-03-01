@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"fivestars/internal/domain/customerror"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -20,12 +22,12 @@ func NewHealthHandler(pool *pgxpool.Pool) *HealthHandler {
 // ServeHTTP responds 200 if DB is reachable, 503 otherwise.
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		EncodeError(w, customerror.NewMethodNotAllowedError("method not allowed"))
 		return
 	}
 	ctx := r.Context()
 	if err := h.pool.Ping(ctx); err != nil {
-		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		EncodeError(w, customerror.NewServiceUnavailableError("database unavailable"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

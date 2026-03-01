@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fivestars/internal/domain"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -27,7 +28,7 @@ func (r *checkinRepository) Create(ctx context.Context, checkin *domain.Checkin)
 		VALUES (COALESCE(NULLIF($1, ''), uuid_generate_v4()), $2, $3, $4, $5, $6, $7)
 	`, checkin.ID, checkin.UserID, checkin.EstablishmentID, checkin.Lat, checkin.Lng, checkin.CheckedAt, checkin.CreatedAt)
 	if err != nil {
-		return fmt.Errorf("insert checkin: %w", err)
+		return postgres.MapError(fmt.Errorf("insert checkin: %w", err), "checkin")
 	}
 	return nil
 }
@@ -40,7 +41,7 @@ func (r *checkinRepository) ListByUser(ctx context.Context, userID string) ([]do
 		ORDER BY checked_at DESC
 	`, userID)
 	if err != nil {
-		return nil, err
+		return nil, postgres.MapError(err, "checkin")
 	}
 	defer rows.Close()
 
@@ -49,11 +50,14 @@ func (r *checkinRepository) ListByUser(ctx context.Context, userID string) ([]do
 		var dto CheckinDTO
 		err := rows.Scan(&dto.ID, &dto.UserID, &dto.EstablishmentID, &dto.Lat, &dto.Lng, &dto.CheckedAt, &dto.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, postgres.MapError(err, "checkin")
 		}
 		list = append(list, *dto.ToDomain())
 	}
-	return list, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, postgres.MapError(err, "checkin")
+	}
+	return list, nil
 }
 
 func (r *checkinRepository) FindTodayByUserAndEstablishment(ctx context.Context, userID, establishmentID string) (*domain.Checkin, error) {
@@ -66,7 +70,10 @@ func (r *checkinRepository) FindTodayByUserAndEstablishment(ctx context.Context,
 	`, userID, establishmentID)
 	var dto CheckinDTO
 	if err := row.Scan(&dto.ID, &dto.UserID, &dto.EstablishmentID, &dto.Lat, &dto.Lng, &dto.CheckedAt, &dto.CreatedAt); err != nil {
-		return nil, err
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "checkin")
 	}
 	return dto.ToDomain(), nil
 }

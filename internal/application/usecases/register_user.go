@@ -33,7 +33,10 @@ func (uc *registerUserUseCase) Execute(ctx context.Context, inputLogin domain.Us
 		return nil, error
 	}
 
-	existingUser, _ := uc.userRepo.GetByEmail(ctx, inputLogin.Email)
+	existingUser, err := uc.userRepo.GetByEmail(ctx, inputLogin.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing user: %w", err)
+	}
 	if existingUser != nil {
 		return nil, customerror.NewConflictError("user with this email already exists")
 	}

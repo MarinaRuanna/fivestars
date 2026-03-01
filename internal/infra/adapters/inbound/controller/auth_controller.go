@@ -24,80 +24,63 @@ func NewAuthHandler(
 	}
 }
 
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, customerror.NewValidationError("body JSON inválido"))
-		return
+		return customerror.NewValidationError("body JSON inválido")
 	}
 
 	registration, err := ToDomainRegister(req)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	output, err := h.registerUserUseCase.Execute(r.Context(), *registration)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	registrationDTO, err := ToLoginResponse(*output)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	// 5. FORMAT HTTP RESPONSE
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(LoginResponse{Token: registrationDTO.Token})
-}
-
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+	if err := json.NewEncoder(w).Encode(LoginResponse{Token: registrationDTO.Token}); err != nil {
+		return err
 	}
 
+	return nil
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, customerror.NewValidationError("body JSON inválido"))
-		return
+		return customerror.NewValidationError("body JSON inválido")
 	}
 
 	credentials, err := ToDomainLogin(req)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	output, err := h.loginUserUseCase.Execute(r.Context(), *credentials)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	LoginResponseDTO, err := ToLoginResponse(*output)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(LoginResponse{Token: LoginResponseDTO.Token})
-}
+	if err := json.NewEncoder(w).Encode(LoginResponse{Token: LoginResponseDTO.Token}); err != nil {
+		return err
+	}
 
-func respondError(w http.ResponseWriter, err error) {
-	code := customerror.StatusCodeFromError(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	return nil
 }

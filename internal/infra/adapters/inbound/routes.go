@@ -2,8 +2,11 @@ package inbound
 
 import (
 	"net/http"
+	"time"
 
+	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/adapters/inbound/controller"
+	"fivestars/internal/infra/auth"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,8 +21,11 @@ type Handlers struct {
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
-func CreateChiRoutes(h Handlers) http.Handler {
+func CreateChiRoutes(h Handlers, jwtSecret string) http.Handler {
 	r := chi.NewRouter()
+
+	// Recover from panics and keep JSON error contract.
+	r.Use(RecoverPanic)
 
 	// Apply CORS first so OPTIONS/preflight requests are handled before
 	// header validation (preflight doesn't include most headers).
@@ -32,24 +38,24 @@ func CreateChiRoutes(h Handlers) http.Handler {
 
 	// Auth: /auth/register and /auth/login
 	if h.Auth != nil {
-		r.Post("/auth/register", h.Auth.Register)
-		r.Post("/auth/login", h.Auth.Login)
+		r.Post("/auth/register", WithErrorEncoder(h.Auth.Register))
+		r.With(LoginRateLimit(30, 10, 5*time.Minute)).Post("/auth/login", WithErrorEncoder(h.Auth.Login))
 	}
 
-	// Users: /users/me requires Authorization header
+	// Users: /users/me requires a valid bearer token
 	if h.User != nil {
-		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Get("/users/me", h.User.GetUser)
+		r.With(auth.RequireAuth(jwtSecret)).Get("/users/me", WithErrorEncoder(h.User.GetUser))
 	}
 
 	// Establishments: list endpoint
 	if h.Establishments != nil {
-		r.Get("/establishments", h.Establishments.ListEstablishments)
+		r.Get("/establishments", WithErrorEncoder(h.Establishments.ListEstablishments))
 	}
 
 	// Checkins: create (protected) and list user's checkins
 	if h.Checkins != nil {
-		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Post("/checkins", h.Checkins.CreateCheckin)
-		r.With(HeaderValidator(map[string]string{"Authorization": ""})).Get("/checkins/me", h.Checkins.ListMyCheckins)
+		r.With(auth.RequireAuth(jwtSecret)).Post("/checkins", WithErrorEncoder(h.Checkins.CreateCheckin))
+		r.With(auth.RequireAuth(jwtSecret)).Get("/checkins/me", WithErrorEncoder(h.Checkins.ListMyCheckins))
 	}
 
 	return r
@@ -71,11 +77,11 @@ func HeaderValidator(required map[string]string) func(http.Handler) http.Handler
 			for k, expect := range required {
 				val := r.Header.Get(k)
 				if val == "" {
-					http.Error(w, "missing header: "+k, http.StatusBadRequest)
+					controller.EncodeError(w, customerror.NewValidationError("missing header: "+k))
 					return
 				}
 				if expect != "" && val != expect {
-					http.Error(w, "invalid header value: "+k, http.StatusBadRequest)
+					controller.EncodeError(w, customerror.NewValidationError("invalid header value: "+k))
 					return
 				}
 			}

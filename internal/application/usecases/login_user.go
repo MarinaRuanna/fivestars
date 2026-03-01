@@ -20,6 +20,11 @@ type loginUserUseCase struct {
 	jwtSecret string
 }
 
+const invalidCredentialsMessage = "credenciais inválidas"
+
+// Dummy bcrypt hash used to reduce observable timing differences when user does not exist.
+const dummyPasswordHash = "$2a$12$qqjsuJzRw9/gfk3wHMXzp.vkaJnYDSJ8FZh194xKs8F0rbt1VPaRK"
+
 func NewLoginUserUseCase(userRepo domain.UserRepository, jwtSecret config.JWTConfig) LoginUserUseCase {
 	return &loginUserUseCase{
 		userRepo:  userRepo,
@@ -38,11 +43,12 @@ func (uc *loginUserUseCase) Execute(ctx context.Context, inputLogin domain.UserC
 		return nil, fmt.Errorf("failed to fetch user: %w", err)
 	}
 	if user == nil {
-		return nil, customerror.NewNotFoundError("user not found")
+		_ = auth.CheckPassword(dummyPasswordHash, inputLogin.Password)
+		return nil, customerror.NewUnauthorizedError(invalidCredentialsMessage)
 	}
 
 	if !auth.CheckPassword(user.PasswordHash, inputLogin.Password) {
-		return nil, customerror.NewUnauthorizedError("invalid email or password")
+		return nil, customerror.NewUnauthorizedError(invalidCredentialsMessage)
 	}
 
 	token, err := auth.NewToken(user.ID, uc.jwtSecret, 0)

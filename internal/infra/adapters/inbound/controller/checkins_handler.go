@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"fivestars/internal/application/usecases"
+	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/auth"
 )
 
@@ -17,89 +18,60 @@ func NewCheckinsHandler(createUC usecases.CreateCheckinUseCase, listUC usecases.
 	return &CheckinsHandler{createUC: createUC, listUC: listUC}
 }
 
-func (h *CheckinsHandler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (h *CheckinsHandler) CreateCheckin(w http.ResponseWriter, r *http.Request) error {
 	userID := auth.UserIDFromContext(r.Context())
 	if userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "user not authenticated"})
-		return
+		return customerror.NewUnauthorizedError("user not authenticated")
 	}
 
 	var dto createCheckinDTO
 	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid body"})
-		return
+		return customerror.NewValidationError("invalid body")
 	}
 	if dto.Lat == nil || dto.Lng == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "lat/lng required"})
-		return
+		return customerror.NewValidationError("lat/lng required")
 	}
 
 	checkin, err := ToDomainCheckin(&dto, userID)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
+		return err
 	}
 
 	res, err := h.createUC.Execute(r.Context(), *checkin)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		if err.Error() == "establishment not found" {
-			w.WriteHeader(http.StatusNotFound)
-		} else if err.Error() == "check-in already performed today for this establishment" {
-			w.WriteHeader(http.StatusConflict)
-		} else if err.Error() == "user too far from establishment" || err.Error() == "establishment has no location" {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
+		return err
 	}
 
 	checkinDTO, err := ToCheckinDTO(res)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to serialize response"})
-		return
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(checkinDTO)
-}
-
-func (h *CheckinsHandler) ListMyCheckins(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+	if err := json.NewEncoder(w).Encode(checkinDTO); err != nil {
+		return err
 	}
 
+	return nil
+}
+
+func (h *CheckinsHandler) ListMyCheckins(w http.ResponseWriter, r *http.Request) error {
 	userID := auth.UserIDFromContext(r.Context())
 	if userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "user not authenticated"})
-		return
+		return customerror.NewUnauthorizedError("user not authenticated")
 	}
 
 	list, err := h.listUC.Execute(r.Context(), userID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(list)
+	if err := json.NewEncoder(w).Encode(list); err != nil {
+		return err
+	}
+
+	return nil
 }

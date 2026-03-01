@@ -2,13 +2,11 @@ package users
 
 import (
 	"context"
-	"errors"
 
 	"fivestars/internal/domain"
 	"fivestars/internal/domain/customerror"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -30,10 +28,7 @@ func (r *userRepository) Create(ctx context.Context, u *domain.User) error {
 		RETURNING id, created_at, updated_at
 	`, u.Email, u.PasswordHash, u.Name, u.AvatarURL, u.Level).Scan(&userID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
-		if isUniqueViolation(err) {
-			return customerror.NewConflictError("email já cadastrado")
-		}
-		return err
+		return postgres.MapError(err, "user")
 	}
 	u.ID = uuidToString(userID)
 	return nil
@@ -43,7 +38,7 @@ func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.Us
 	var dto UserDTO
 	uuid, err := parseUUID(userID)
 	if err != nil {
-		return nil, err
+		return nil, customerror.NewValidationError("invalid user id")
 	}
 	err = r.pool.QueryRow(ctx, `
 		SELECT id, email, password_hash, name, avatar_url, level, created_at, updated_at
@@ -52,11 +47,11 @@ func (r *userRepository) GetByID(ctx context.Context, userID string) (*domain.Us
 		&dto.ID, &dto.Email, &dto.PasswordHash, &dto.Name,
 		&dto.AvatarURL, &dto.Level, &dto.CreatedAt, &dto.UpdatedAt,
 	)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if postgres.IsNoRows(err) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, postgres.MapError(err, "user")
 	}
 
 	user, err := dto.ToDomain()
@@ -76,11 +71,11 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		&dto.ID, &dto.Email, &dto.PasswordHash, &dto.Name,
 		&dto.AvatarURL, &dto.Level, &dto.CreatedAt, &dto.UpdatedAt,
 	)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if postgres.IsNoRows(err) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, postgres.MapError(err, "user")
 	}
 	return dto.ToDomain()
 }
@@ -89,12 +84,4 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID
 	err := u.Scan(s)
 	return u, err
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
 }

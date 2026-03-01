@@ -3,6 +3,9 @@ package auth
 import (
 	"net/http"
 	"strings"
+
+	"fivestars/internal/domain/customerror"
+	"fivestars/internal/infra/adapters/inbound/httperror"
 )
 
 // RequireAuth retorna um middleware que exige Bearer JWT válido e coloca o user_id no context.
@@ -13,17 +16,13 @@ func RequireAuth(secret string) func(next http.Handler) http.Handler {
 			header := r.Header.Get("Authorization")
 			const prefix = "Bearer "
 			if !strings.HasPrefix(header, prefix) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte(`{"error":"missing or invalid authorization header"}`))
+				httperror.Encode(w, customerror.NewUnauthorizedError("missing or invalid authorization header"))
 				return
 			}
 			tokenString := strings.TrimPrefix(header, prefix)
 			userID, err := ParseToken(tokenString, secret)
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte(`{"error":"invalid or expired token"}`))
+				httperror.Encode(w, customerror.NewUnauthorizedError("invalid or expired token"))
 				return
 			}
 			ctx := WithUserID(r.Context(), userID)

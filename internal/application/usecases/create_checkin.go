@@ -35,6 +35,9 @@ func (uc *createCheckinUseCase) Execute(ctx context.Context, input domain.Checki
 	// ensure establishment exists
 	estab, err := uc.estabRepo.GetByID(ctx, input.EstablishmentID)
 	if err != nil {
+		return nil, fmt.Errorf("failed to fetch establishment: %w", err)
+	}
+	if estab == nil {
 		return nil, customerror.NewNotFoundError("establishment not found")
 	}
 	if estab.Lat == nil || estab.Lng == nil {
@@ -52,7 +55,10 @@ func (uc *createCheckinUseCase) Execute(ctx context.Context, input domain.Checki
 
 	// enforce 1 check-in per day for same user+establishment
 	existing, err := uc.checkinRepo.FindTodayByUserAndEstablishment(ctx, input.UserID, input.EstablishmentID)
-	if err == nil && existing != nil {
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing checkin: %w", err)
+	}
+	if existing != nil {
 		return nil, customerror.NewConflictError("check-in already performed today for this establishment")
 	}
 
