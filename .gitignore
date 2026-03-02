@@ -34,3 +34,7 @@ Thumbs.db
 # Coverage
 coverage.out
 coverage.html
+
+# go module cache
+/pkg/mod/
+/pkg/sumdb/
