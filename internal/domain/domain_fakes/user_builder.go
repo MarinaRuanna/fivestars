@@ -12,7 +12,7 @@ type UserBuilder struct {
 func NewUserBuilder() *UserBuilder {
 	dateTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	user := &domain.User{
-		ID:           "test-user-id",
+		ID:           "11111111-1111-4111-8111-111111111111",
 		Email:        "test@example.com",
 		Name:         "Test User",
 		PasswordHash: "test-password",

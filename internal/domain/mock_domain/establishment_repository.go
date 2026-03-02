@@ -41,6 +41,36 @@ func (m *MockEstablishmentRepository) EXPECT() *MockEstablishmentRepositoryMockR
 	return m.recorder
 }
 
+// DistanceTo mocks base method.
+func (m *MockEstablishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DistanceTo", ctx, id, lat, lng)
+	ret0, _ := ret[0].(float64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DistanceTo indicates an expected call of DistanceTo.
+func (mr *MockEstablishmentRepositoryMockRecorder) DistanceTo(ctx, id, lat, lng any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistanceTo", reflect.TypeOf((*MockEstablishmentRepository)(nil).DistanceTo), ctx, id, lat, lng)
+}
+
+// GetByID mocks base method.
+func (m *MockEstablishmentRepository) GetByID(ctx context.Context, id string) (*domain.Establishment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
+	ret0, _ := ret[0].(*domain.Establishment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockEstablishmentRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockEstablishmentRepository)(nil).GetByID), ctx, id)
+}
+
 // List mocks base method.
 func (m *MockEstablishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	m.ctrl.T.Helper()
