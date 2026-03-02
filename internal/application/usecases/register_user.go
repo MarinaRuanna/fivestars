@@ -7,65 +7,48 @@ import (
 	"fivestars/internal/domain"
 	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/auth"
+	"fivestars/internal/infra/config"
 )
 
-// RegisterUserUseCase implements user registration business logic.
-// ⭐ Completely isolated from HTTP and database specifics.
-type RegisterUserUseCase struct {
+//go:generate go run go.uber.org/mock/mockgen -destination mock_usecases/register_user.go -package mock_usecases . RegisterUserUseCase
+type RegisterUserUseCase interface {
+	Execute(ctx context.Context, inputLogin domain.UserRegistration) (*domain.AuthenticationResult, error)
+}
+
+type registerUserUseCase struct {
 	userRepo  domain.UserRepository
 	jwtSecret string
 }
 
-// NewRegisterUserUseCase creates a new RegisterUserUseCase.
-func NewRegisterUserUseCase(userRepo domain.UserRepository, jwtSecret string) *RegisterUserUseCase {
-	return &RegisterUserUseCase{
+func NewRegisterUserUseCase(userRepo domain.UserRepository, jwtSecret config.JWTConfig) RegisterUserUseCase {
+	return &registerUserUseCase{
 		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		jwtSecret: jwtSecret.Secret,
 	}
 }
 
-// RegisterUserInput DTO for the use case input.
-type RegisterUserInput struct {
-	Email    string
-	Password string
-	Name     string
-}
-
-// RegisterUserOutput DTO for the use case output.
-type RegisterUserOutput struct {
-	UserID string
-	Token  string
-	Name   string
-}
-
-// Execute runs the registration logic.
-func (uc *RegisterUserUseCase) Execute(ctx context.Context, input RegisterUserInput) (*RegisterUserOutput, error) {
-	// 1. VALIDATE
-	if input.Email == "" || input.Password == "" || input.Name == "" {
-		return nil, customerror.NewValidationError("email, password, and name are required")
+func (uc *registerUserUseCase) Execute(ctx context.Context, inputLogin domain.UserRegistration) (*domain.AuthenticationResult, error) {
+	error := inputLogin.Validate()
+	if error != nil {
+		return nil, error
 	}
 
-	if len(input.Password) < 6 {
-		return nil, customerror.NewValidationError("password must be at least 6 characters")
+	existingUser, err := uc.userRepo.GetByEmail(ctx, inputLogin.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
-
-	// 2. CHECK DUPLICATE (domain-level constraint)
-	existingUser, _ := uc.userRepo.GetByEmail(ctx, input.Email)
 	if existingUser != nil {
-		return nil, customerror.NewConflictError(fmt.Sprintf("user with email %s already exists", input.Email))
+		return nil, customerror.NewConflictError("user with this email already exists")
 	}
 
-	// 3. HASH PASSWORD (auth utility, not HTTP layer)
-	hashedPassword, err := auth.HashPassword(input.Password)
+	hashedPassword, err := auth.HashPassword(inputLogin.Password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// 4. CREATE USER (domain entity)
-	user := &domain.User{
-		Email:        input.Email,
-		PasswordHash: hashedPassword,
-		Name:         input.Name,
+	user, err := domain.NewUser(inputLogin.Email, hashedPassword, inputLogin.Name)
+	if err != nil {
+		return nil, err
 	}
 
 	err = uc.userRepo.Create(ctx, user)
@@ -73,22 +56,15 @@ func (uc *RegisterUserUseCase) Execute(ctx context.Context, input RegisterUserIn
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Get user ID for token generation
-	createdUser, err := uc.userRepo.GetByEmail(ctx, input.Email)
+	createdUser, err := uc.userRepo.GetByEmail(ctx, inputLogin.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch created user: %w", err)
 	}
 
-	// 5. GENERATE TOKEN (auth utility)
 	token, err := auth.NewToken(createdUser.ID, uc.jwtSecret, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	// 6. RETURN OUTPUT (formatted for HTTP, but decoupled from HTTP layer)
-	return &RegisterUserOutput{
-		UserID: createdUser.ID,
-		Token:  token,
-		Name:   createdUser.Name,
-	}, nil
+	return domain.NewAuthenticationResult(createdUser.ID, createdUser.Name, token)
 }

@@ -42,10 +42,10 @@ func (m *MockEstablishmentRepository) EXPECT() *MockEstablishmentRepositoryMockR
 }
 
 // List mocks base method.
-func (m *MockEstablishmentRepository) List(ctx context.Context) ([]*domain.Establishment, error) {
+func (m *MockEstablishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx)
-	ret0, _ := ret[0].([]*domain.Establishment)
+	ret0, _ := ret[0].([]domain.Establishment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

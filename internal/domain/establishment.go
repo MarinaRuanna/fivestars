@@ -9,21 +9,22 @@ import (
 
 //go:generate go run go.uber.org/mock/mockgen -destination mock_domain/establishment_repository.go -package mock_domain . EstablishmentRepository
 type EstablishmentRepository interface {
-	List(ctx context.Context) ([]*Establishment, error)
+	List(ctx context.Context) ([]Establishment, error)
+	GetByID(ctx context.Context, id string) (*Establishment, error)
+	DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error)
 }
 
-// Establishment represents a place that can be checked in and reviewed.
 type Establishment struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	Category  string    `json:"category"`
-	Address   string    `json:"address,omitempty"`
-	Lat       *float64  `json:"lat,omitempty"`
-	Lng       *float64  `json:"lng,omitempty"`
-	QRCode    string    `json:"qr_code,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string `validate:"required"`
+	Name      string `validate:"required"`
+	Slug      string
+	Category  string `validate:"required"`
+	Address   string
+	Lat       *float64
+	Lng       *float64
+	QRCode    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (e *Establishment) Validate() error {

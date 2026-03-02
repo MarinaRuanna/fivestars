@@ -8,17 +8,15 @@ import (
 	"fivestars/internal/domain/customerror"
 )
 
-// AuthHandler trataPOST /auth/register e POST /auth/login.
-// ⭐ REFATORADO: Agora apenas ORQUESTRA HTTP + delegação para usecases
 type AuthHandler struct {
-	registerUserUseCase *usecases.RegisterUserUseCase
-	loginUserUseCase    *usecases.LoginUserUseCase
+	registerUserUseCase usecases.RegisterUserUseCase
+	loginUserUseCase    usecases.LoginUserUseCase
 }
 
 // NewAuthHandler cria um AuthHandler.
 func NewAuthHandler(
-	registerUserUseCase *usecases.RegisterUserUseCase,
-	loginUserUseCase *usecases.LoginUserUseCase,
+	registerUserUseCase usecases.RegisterUserUseCase,
+	loginUserUseCase usecases.LoginUserUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
 		registerUserUseCase: registerUserUseCase,
@@ -26,77 +24,63 @@ func NewAuthHandler(
 	}
 }
 
-// Register trata POST /auth/register.
-// ⭐ REFATORADO: Handler apenas parseia HTTP + chama usecase
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 1. PARSE HTTP
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, customerror.NewValidationError("body JSON inválido"))
-		return
+		return customerror.NewValidationError("body JSON inválido")
 	}
 
-	// 2. DELEGAR PARA USECASE (toda a lógica de negócio)
-	output, err := h.registerUserUseCase.Execute(r.Context(), usecases.RegisterUserInput{
-		Email:    req.Email,
-		Password: req.Password,
-		Name:     req.Name,
-	})
-
-	// 3. HANDLE ERRO
+	registration, err := ToDomainRegister(req)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
-	// 4. FORMAT HTTP RESPONSE
+	output, err := h.registerUserUseCase.Execute(r.Context(), *registration)
+	if err != nil {
+		return err
+	}
+
+	registrationDTO, err := ToLoginResponse(*output)
+	if err != nil {
+		return err
+	}
+
+	// 5. FORMAT HTTP RESPONSE
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(LoginResponse{Token: output.Token})
-}
-
-// Login trata POST /auth/login.
-// ⭐ REFATORADO: Handler apenas parseia HTTP + chama usecase
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
+	if err := json.NewEncoder(w).Encode(LoginResponse{Token: registrationDTO.Token}); err != nil {
+		return err
 	}
 
-	// 1. PARSE HTTP
+	return nil
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, customerror.NewValidationError("body JSON inválido"))
-		return
+		return customerror.NewValidationError("body JSON inválido")
 	}
 
-	// 2. DELEGAR PARA USECASE (toda a lógica de negócio)
-	output, err := h.loginUserUseCase.Execute(r.Context(), usecases.LoginUserInput{
-		Email:    req.Email,
-		Password: req.Password,
-	})
-
-	// 3. HANDLE ERRO
+	credentials, err := ToDomainLogin(req)
 	if err != nil {
-		respondError(w, err)
-		return
+		return err
 	}
 
-	// 4. FORMAT HTTP RESPONSE
+	output, err := h.loginUserUseCase.Execute(r.Context(), *credentials)
+	if err != nil {
+		return err
+	}
+
+	LoginResponseDTO, err := ToLoginResponse(*output)
+	if err != nil {
+		return err
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(LoginResponse{Token: output.Token})
-}
+	if err := json.NewEncoder(w).Encode(LoginResponse{Token: LoginResponseDTO.Token}); err != nil {
+		return err
+	}
 
-// respondError escreve erro no formato JSON e status apropriado usando customerror.
-func respondError(w http.ResponseWriter, err error) {
-	code := customerror.StatusCodeFromError(err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	return nil
 }

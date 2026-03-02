@@ -5,11 +5,8 @@ import (
 	"time"
 )
 
-// EstablishmentResponse é o contrato da API para um estabelecimento.
-// Expõe apenas os campos desejados na resposta HTTP (proteção dos dados internos).
-// QRCode não é exposto na API pública.
 type EstablishmentResponse struct {
-	ID        string   `json:"id"`
+	ID        string   `json:"establishment_id"`
 	Name      string   `json:"name"`
 	Slug      string   `json:"slug"`
 	Category  string   `json:"category"`
@@ -20,12 +17,10 @@ type EstablishmentResponse struct {
 	UpdatedAt string   `json:"updated_at"`
 }
 
-// EstablishmentListResponse é o contrato da API para a lista de estabelecimentos.
 type EstablishmentListResponse struct {
 	Items []EstablishmentResponse `json:"items"`
 }
 
-// FromDomain converte uma entidade de domínio em DTO de resposta da API.
 func FromDomain(e *domain.Establishment) EstablishmentResponse {
 	return EstablishmentResponse{
 		ID:        e.ID,
@@ -38,4 +33,12 @@ func FromDomain(e *domain.Establishment) EstablishmentResponse {
 		CreatedAt: e.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: e.UpdatedAt.UTC().Format(time.RFC3339),
 	}
+}
+
+func FromDomainList(estabs []domain.Establishment) []EstablishmentResponse {
+	responses := make([]EstablishmentResponse, len(estabs))
+	for i, estab := range estabs {
+		responses[i] = FromDomain(&estab)
+	}
+	return responses
 }

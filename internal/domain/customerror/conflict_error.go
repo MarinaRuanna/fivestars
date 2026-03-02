@@ -1,14 +1,16 @@
 package customerror
 
-import "net/http"
-
 const ConflictErrorType ErrorType = "conflict"
 
 func NewConflictError(message string) error {
 	return &CustomError{
 		messagePrefix: "Conflict",
 		message:       message,
-		statusCode:    http.StatusConflict,
+		statusCode:    409,
 		errorType:     ConflictErrorType,
 	}
+}
+
+func (e CustomError) IsConflictError() bool {
+	return e.ErrorType() == ConflictErrorType
 }
