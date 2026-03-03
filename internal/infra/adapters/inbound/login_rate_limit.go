@@ -23,21 +23,21 @@ type rateLimitCounter struct {
 }
 
 type loginRateLimiter struct {
-	mu           sync.Mutex
-	ipCounters   map[string]rateLimitCounter
-	emailCounter map[string]rateLimitCounter
-	ipLimit      int
-	emailLimit   int
-	window       time.Duration
+	mu                 sync.Mutex
+	ipCounters         map[string]rateLimitCounter
+	emailPerIPCounters map[string]rateLimitCounter
+	ipLimit            int
+	emailPerIPLimit    int
+	window             time.Duration
 }
 
 func newLoginRateLimiter(ipLimit, emailLimit int, window time.Duration) *loginRateLimiter {
 	return &loginRateLimiter{
-		ipCounters:   make(map[string]rateLimitCounter),
-		emailCounter: make(map[string]rateLimitCounter),
-		ipLimit:      ipLimit,
-		emailLimit:   emailLimit,
-		window:       window,
+		ipCounters:         make(map[string]rateLimitCounter),
+		emailPerIPCounters: make(map[string]rateLimitCounter),
+		ipLimit:            ipLimit,
+		emailPerIPLimit:    emailLimit,
+		window:             window,
 	}
 }
 
@@ -61,14 +61,16 @@ func (l *loginRateLimiter) hitAndCheck(ip, email string) bool {
 		}
 	}
 
-	if email != "" {
-		emailCounter := l.emailCounter[email]
+	// Email throttling is scoped per IP to avoid global account lockout.
+	if ip != "" && email != "" {
+		key := ip + "|" + email
+		emailCounter := l.emailPerIPCounters[key]
 		if now.After(emailCounter.ResetAt) {
 			emailCounter = rateLimitCounter{ResetAt: now.Add(l.window)}
 		}
 		emailCounter.Count++
-		l.emailCounter[email] = emailCounter
-		if emailCounter.Count > l.emailLimit {
+		l.emailPerIPCounters[key] = emailCounter
+		if emailCounter.Count > l.emailPerIPLimit {
 			return false
 		}
 	}
@@ -82,14 +84,14 @@ func (l *loginRateLimiter) cleanupExpired(now time.Time) {
 			delete(l.ipCounters, k)
 		}
 	}
-	for k, v := range l.emailCounter {
+	for k, v := range l.emailPerIPCounters {
 		if now.After(v.ResetAt) {
-			delete(l.emailCounter, k)
+			delete(l.emailPerIPCounters, k)
 		}
 	}
 }
 
-// LoginRateLimit applies in-memory rate limiting for login attempts by both IP and email.
+// LoginRateLimit applies in-memory rate limiting for login attempts by IP and by IP+email.
 func LoginRateLimit(ipLimit, emailLimit int, window time.Duration) func(http.Handler) http.Handler {
 	limiter := newLoginRateLimiter(ipLimit, emailLimit, window)
 
@@ -125,17 +127,7 @@ func LoginRateLimit(ipLimit, emailLimit int, window time.Duration) func(http.Han
 }
 
 func clientIP(r *http.Request) string {
-	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-
-	if xrip := strings.TrimSpace(r.Header.Get("X-Real-IP")); xrip != "" {
-		return xrip
-	}
-
+	// Use socket address only. Forwarded headers are ignored here to prevent spoofing.
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err == nil {
 		return host

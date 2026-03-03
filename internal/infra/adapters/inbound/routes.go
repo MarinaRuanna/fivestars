@@ -21,7 +21,7 @@ type Handlers struct {
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
-func CreateChiRoutes(h Handlers, jwtSecret string) http.Handler {
+func CreateChiRoutes(h Handlers, jwtSecret string, corsAllowedOrigins []string) http.Handler {
 	r := chi.NewRouter()
 
 	// Recover from panics and keep JSON error contract.
@@ -29,7 +29,7 @@ func CreateChiRoutes(h Handlers, jwtSecret string) http.Handler {
 
 	// Apply CORS first so OPTIONS/preflight requests are handled before
 	// header validation (preflight doesn't include most headers).
-	r.Use(CORS)
+	r.Use(CORS(corsAllowedOrigins))
 
 	// Register health endpoint (no extra header requirements)
 	if h.Health != nil {

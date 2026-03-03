@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"fivestars/internal/application/usecases"
-	"fivestars/internal/domain/customerror"
 )
+
+const authBodyMaxBytes int64 = 32 << 10 // 32KB
 
 type AuthHandler struct {
 	registerUserUseCase usecases.RegisterUserUseCase
@@ -26,8 +27,8 @@ func NewAuthHandler(
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerror.NewValidationError("body JSON inválido")
+	if err := decodeStrictJSONBody(w, r, &req, authBodyMaxBytes); err != nil {
+		return err
 	}
 
 	registration, err := ToDomainRegister(req)
@@ -57,8 +58,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return customerror.NewValidationError("body JSON inválido")
+	if err := decodeStrictJSONBody(w, r, &req, authBodyMaxBytes); err != nil {
+		return err
 	}
 
 	credentials, err := ToDomainLogin(req)
