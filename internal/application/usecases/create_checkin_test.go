@@ -131,4 +131,25 @@ func Test_CreateCheckinUseCase_Execute(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to create checkin")
 		assert.ErrorIs(t, err, repoErr)
 	})
+
+	t.Run("should return conflict when database detects duplicated checkin day", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		checkinRepo := mock_domain.NewMockCheckinRepository(ctrl)
+		estabRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, radius)
+
+		input := domain_fakes.NewCheckinBuilder().Build()
+		estab := domain_fakes.NewEstablishmentBuilder().WithID(input.EstablishmentID).Build()
+
+		estabRepo.EXPECT().GetByID(ctx, input.EstablishmentID).Return(&estab, nil)
+		estabRepo.EXPECT().DistanceTo(ctx, input.EstablishmentID, input.Lat, input.Lng).Return(5.0, nil)
+		checkinRepo.EXPECT().FindTodayByUserAndEstablishment(ctx, input.UserID, input.EstablishmentID).Return(nil, nil)
+		checkinRepo.EXPECT().Create(ctx, gomock.Any()).Return(customerror.NewConflictError("checkin already exists"))
+
+		result, err := uc.Execute(ctx, input)
+
+		require.Nil(t, result)
+		requireCustomErrorType(t, err, customerror.ConflictErrorType)
+		assert.ErrorContains(t, err, "check-in already performed today for this establishment")
+	})
 }

@@ -72,6 +72,9 @@ func (uc *createCheckinUseCase) Execute(ctx context.Context, input domain.Checki
 
 	// persist
 	if err := uc.checkinRepo.Create(ctx, &input); err != nil {
+		if errorType, ok := customerror.TypeOf(err); ok && errorType == customerror.ConflictErrorType {
+			return nil, customerror.NewConflictError("check-in already performed today for this establishment")
+		}
 		return nil, fmt.Errorf("failed to create checkin: %w", err)
 	}
 

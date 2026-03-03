@@ -9,6 +9,8 @@ import (
 	"fivestars/internal/infra/auth"
 )
 
+const checkinBodyMaxBytes int64 = 16 << 10 // 16KB
+
 type CheckinsHandler struct {
 	createUC usecases.CreateCheckinUseCase
 	listUC   usecases.ListCheckinsUseCase
@@ -25,8 +27,8 @@ func (h *CheckinsHandler) CreateCheckin(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var dto createCheckinDTO
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		return customerror.NewValidationError("invalid body")
+	if err := decodeStrictJSONBody(w, r, &dto, checkinBodyMaxBytes); err != nil {
+		return err
 	}
 	if dto.Lat == nil || dto.Lng == nil {
 		return customerror.NewValidationError("lat/lng required")

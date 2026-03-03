@@ -11,6 +11,7 @@ type Config struct {
 	AppPort          int            `envconfig:"appPort" required:"true" default:"8080"`
 	DatabasePostgres PostgresConfig `envconfig:"postgres" required:"true"`
 	JWTSecret        JWTConfig      `envconfig:"jwt" required:"true"`
+	CORS             CORSConfig     `envconfig:"cors"`
 }
 
 type PostgresConfig struct {
@@ -26,6 +27,10 @@ type PostgresConfig struct {
 
 type JWTConfig struct {
 	Secret string `envconfig:"secret" required:"true"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins []string `envconfig:"allowed_origins" default:"http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"`
 }
 
 func (pc PostgresConfig) DSN() string {
