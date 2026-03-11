@@ -26,6 +26,26 @@ Plataforma mobile de avaliações de estabelecimentos baseada em check-in real: 
 | `JWT_SECRET` | Segredo usado para assinar JWT |
 | `APPPORT` | Porta HTTP da API (opcional; padrão `8080`) |
 
+## .env local (opcional)
+
+Para desenvolvimento local, você pode criar um arquivo `.env.local` na raiz do projeto.
+Ele é carregado automaticamente no startup e não sobrescreve variáveis já definidas no ambiente.
+
+Exemplo:
+
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DATABASE=fivestars
+POSTGRES_SSLMODE=disable
+POSTGRES_MAXCONNS=10
+POSTGRES_MINCONNS=1
+JWT_SECRET=change-me
+APPPORT=8080
+```
+
 ## Executar
 
 Crie o banco (ex.: `createdb fivestars`), configure as variáveis e rode as migrations SQL.

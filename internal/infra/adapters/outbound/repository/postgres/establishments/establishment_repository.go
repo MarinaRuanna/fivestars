@@ -19,7 +19,11 @@ func NewEstablishmentRepository(pool *pgxpool.Pool) domain.EstablishmentReposito
 
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, slug, category, address, lat, lng, qr_code, created_at, updated_at
+		SELECT id, name, slug, category,
+		       COALESCE(address, '') as address,
+		       lat, lng,
+		       COALESCE(qr_code, '') as qr_code,
+		       created_at, updated_at
 		FROM establishments
 		ORDER BY name
 	`)
@@ -53,7 +57,11 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 
 func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID string) (*domain.Establishment, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, slug, category, address, lat, lng, qr_code, created_at, updated_at
+		SELECT id, name, slug, category,
+		       COALESCE(address, '') as address,
+		       lat, lng,
+		       COALESCE(qr_code, '') as qr_code,
+		       created_at, updated_at
 		FROM establishments
 		WHERE id = $1
 	`, establishmentID)
