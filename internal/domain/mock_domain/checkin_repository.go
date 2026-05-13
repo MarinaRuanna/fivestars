@@ -70,6 +70,21 @@ func (mr *MockCheckinRepositoryMockRecorder) FindTodayByUserAndEstablishment(ctx
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindTodayByUserAndEstablishment", reflect.TypeOf((*MockCheckinRepository)(nil).FindTodayByUserAndEstablishment), ctx, userID, establishmentID)
 }
 
+// GetByID mocks base method.
+func (m *MockCheckinRepository) GetByID(ctx context.Context, checkinID string) (*domain.Checkin, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, checkinID)
+	ret0, _ := ret[0].(*domain.Checkin)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockCheckinRepositoryMockRecorder) GetByID(ctx, checkinID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockCheckinRepository)(nil).GetByID), ctx, checkinID)
+}
+
 // ListByUser mocks base method.
 func (m *MockCheckinRepository) ListByUser(ctx context.Context, userID string) ([]domain.Checkin, error) {
 	m.ctrl.T.Helper()
