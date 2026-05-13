@@ -1,0 +1,181 @@
+Project FiveStars {
+  database_type: "PostgreSQL"
+  Note: '''
+  Modelo lógico relacional do FiveStars (MVP + roadmap próximo).
+  '''
+}
+
+Table users {
+  id uuid [pk, not null]
+  email text [not null, unique]
+  password_hash text [not null]
+  name text [not null]
+  avatar_url text
+  level int [not null, default: 1]
+  xp int [not null, default: 0]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    email [name: "idx_users_email"]
+  }
+}
+
+Table establishments {
+  id uuid [pk, not null]
+  owner_id uuid
+  name text [not null]
+  slug text [not null, unique]
+  category text [not null]
+  address text
+  lat double
+  lng double
+  qr_code_secret text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    slug [name: "idx_establishments_slug"]
+    category [name: "idx_establishments_category"]
+    (lat, lng) [name: "idx_establishments_location"]
+  }
+}
+
+Table checkins {
+  id uuid [pk, not null]
+  user_id uuid [not null]
+  establishment_id uuid [not null]
+  method text [not null, note: "geolocation | qr_code | manual_code"]
+  lat double [not null]
+  lng double [not null]
+  checked_at timestamptz [not null]
+  review_eligible_until timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, establishment_id, checked_at) [name: "idx_checkins_user_estab_checked_at"]
+  }
+
+  Note: '''
+  Regra SQL recomendada:
+  UNIQUE (user_id, establishment_id, date_trunc('day', checked_at AT TIME ZONE 'UTC'))
+  '''
+}
+
+Table reviews {
+  id uuid [pk, not null]
+  checkin_id uuid [not null, unique]
+  user_id uuid [not null]
+  establishment_id uuid [not null]
+  stars int [not null, note: "1..5"]
+  body text [not null]
+  tags jsonb
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    establishment_id [name: "idx_reviews_establishment"]
+    user_id [name: "idx_reviews_user"]
+  }
+}
+
+Table review_likes {
+  user_id uuid [pk, not null]
+  review_id uuid [pk, not null]
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table highlights {
+  id uuid [pk, not null]
+  establishment_id uuid [not null]
+  review_id uuid [not null]
+  position int [not null, default: 1]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (establishment_id, position) [name: "ux_highlights_estab_position", unique]
+  }
+}
+
+Table wallets {
+  user_id uuid [pk, not null]
+  balance int [not null, default: 0, note: ">= 0"]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table wallet_transactions {
+  id uuid [pk, not null]
+  user_id uuid [not null]
+  type text [not null, note: "review_reward | like_reward | highlight_reward | referral_bonus | purchase"]
+  amount int [not null]
+  reference_type text
+  reference_id uuid
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    user_id [name: "idx_wallet_tx_user"]
+    (reference_type, reference_id) [name: "idx_wallet_tx_ref"]
+  }
+}
+
+Table avatar_items {
+  id uuid [pk, not null]
+  name text [not null]
+  type text [not null]
+  cost_coins int [not null]
+  is_seasonal boolean [not null, default: false]
+  asset_url text [not null]
+}
+
+Table user_avatar_items {
+  user_id uuid [pk, not null]
+  item_id uuid [pk, not null]
+  acquired_at timestamptz [not null, default: `now()`]
+}
+
+Table follows {
+  follower_id uuid [pk, not null]
+  followed_id uuid [pk, not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  Regra SQL recomendada:
+  CHECK (follower_id <> followed_id)
+  '''
+}
+
+Table influencer_codes {
+  id uuid [pk, not null]
+  user_id uuid [not null, unique]
+  code text [not null, unique]
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table referrals {
+  id uuid [pk, not null]
+  referrer_user_id uuid [not null]
+  referred_user_id uuid [not null, unique]
+  influencer_code_id uuid [not null]
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Ref: establishments.owner_id > users.id
+Ref: checkins.user_id > users.id [delete: cascade]
+Ref: checkins.establishment_id > establishments.id [delete: cascade]
+Ref: reviews.checkin_id > checkins.id [delete: cascade]
+Ref: reviews.user_id > users.id [delete: cascade]
+Ref: reviews.establishment_id > establishments.id [delete: cascade]
+Ref: review_likes.user_id > users.id [delete: cascade]
+Ref: review_likes.review_id > reviews.id [delete: cascade]
+Ref: highlights.establishment_id > establishments.id [delete: cascade]
+Ref: highlights.review_id > reviews.id [delete: cascade]
+Ref: wallets.user_id > users.id [delete: cascade]
+Ref: wallet_transactions.user_id > users.id [delete: cascade]
+Ref: user_avatar_items.user_id > users.id [delete: cascade]
+Ref: user_avatar_items.item_id > avatar_items.id [delete: cascade]
+Ref: follows.follower_id > users.id [delete: cascade]
+Ref: follows.followed_id > users.id [delete: cascade]
+Ref: influencer_codes.user_id > users.id [delete: cascade]
+Ref: referrals.referrer_user_id > users.id [delete: cascade]
+Ref: referrals.referred_user_id > users.id [delete: cascade]
+Ref: referrals.influencer_code_id > influencer_codes.id [delete: cascade]

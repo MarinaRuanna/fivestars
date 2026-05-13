@@ -3,7 +3,6 @@ package checkins
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"fivestars/internal/domain"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
@@ -20,13 +19,15 @@ func NewCheckinRepository(pool *pgxpool.Pool) domain.CheckinRepository {
 }
 
 func (r *checkinRepository) Create(ctx context.Context, checkin *domain.Checkin) error {
-	if checkin.CreatedAt.IsZero() {
-		checkin.CreatedAt = time.Now().UTC()
+	dto, err := FromDomain(checkin)
+	if err != nil {
+		return err
 	}
-	_, err := r.pool.Exec(ctx, `
+
+	_, err = r.pool.Exec(ctx, `
 		INSERT INTO checkins (id, user_id, establishment_id, lat, lng, checked_at, created_at)
 		VALUES (COALESCE(NULLIF($1, ''), uuid_generate_v4()), $2, $3, $4, $5, $6, $7)
-	`, checkin.ID, checkin.UserID, checkin.EstablishmentID, checkin.Lat, checkin.Lng, checkin.CheckedAt, checkin.CreatedAt)
+	`, dto.ID, dto.UserID, dto.EstablishmentID, dto.Lat, dto.Lng, dto.CheckedAt, dto.CreatedAt)
 	if err != nil {
 		return postgres.MapError(fmt.Errorf("insert checkin: %w", err), "checkin")
 	}
@@ -52,7 +53,13 @@ func (r *checkinRepository) ListByUser(ctx context.Context, userID string) ([]do
 		if err != nil {
 			return nil, postgres.MapError(err, "checkin")
 		}
-		list = append(list, *dto.ToDomain())
+
+		checkin, err := dto.ToDomain()
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, *checkin)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, postgres.MapError(err, "checkin")
@@ -75,5 +82,24 @@ func (r *checkinRepository) FindTodayByUserAndEstablishment(ctx context.Context,
 		}
 		return nil, postgres.MapError(err, "checkin")
 	}
-	return dto.ToDomain(), nil
+
+	return dto.ToDomain()
+}
+
+func (r *checkinRepository) GetByID(ctx context.Context, checkinID string) (*domain.Checkin, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, user_id, establishment_id, lat, lng, checked_at, created_at
+		FROM checkins
+		WHERE id = $1
+	`, checkinID)
+
+	var dto CheckinDTO
+	if err := row.Scan(&dto.ID, &dto.UserID, &dto.EstablishmentID, &dto.Lat, &dto.Lng, &dto.CheckedAt, &dto.CreatedAt); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "checkin")
+	}
+
+	return dto.ToDomain()
 }
