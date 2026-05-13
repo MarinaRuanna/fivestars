@@ -1,0 +1,55 @@
+# Tasks: Highlights and Establishment Dashboard
+
+## Phase 1. Discovery and Schema
+
+- [ ] T001 Define the `Highlight` and `EstablishmentStats` domain shapes.
+- [ ] T002 Decide the temporary MVP authorization rule for establishment
+  operators and record it in the spec or plan.
+- [ ] T003 Add migration for the `highlights` table and supporting indexes.
+
+## Phase 2. Repository Contracts
+
+- [ ] T004 Add highlight repository interface(s) in `internal/domain`.
+- [ ] T005 Extend establishment and/or review repository contracts for dashboard
+  stats and highlighted review retrieval.
+
+## Phase 3. Use Cases
+
+- [ ] T006 Implement `CreateHighlightUseCase` with same-establishment, duplicate,
+  limit, and authorization checks.
+- [ ] T007 Implement `DeleteHighlightUseCase`.
+- [ ] T008 Implement `GetEstablishmentStatsUseCase`.
+- [ ] T009 Add unit tests for the three use cases above.
+
+## Phase 4. Persistence
+
+- [ ] T010 Implement Postgres highlight repository with DTO mapping and error
+  translation.
+- [ ] T011 Extend establishment/review Postgres repositories to return
+  highlighted reviews and aggregate stats.
+- [ ] T012 Add repository-level tests if the project pattern already supports
+  them; otherwise validate with focused use case coverage plus targeted queries.
+
+## Phase 5. HTTP Delivery
+
+- [ ] T013 Add controller DTOs for create highlight requests and stats
+  responses.
+- [ ] T014 Add handlers for:
+  - `POST /establishments/:id/highlights`
+  - `DELETE /establishments/:id/highlights/:reviewId`
+  - `GET /establishments/:id/stats`
+- [ ] T015 Extend establishment detail responses to include `highlights`.
+- [ ] T016 Wire routes and dependencies in the runner.
+
+## Phase 6. Validation
+
+- [ ] T017 Run targeted `go test` for the affected use cases and repositories.
+- [ ] T018 Manually validate the acceptance scenarios against the API.
+- [ ] T019 Update `docs/EXECUTION_PLAN.md` or related product docs if scope
+  decisions changed during implementation.
+
+## Acceptance Scenario Mapping
+
+- T006, T010, T014 support scenarios 1, 2, and 3.
+- T007, T014 support scenario 4.
+- T008, T011, T014 support scenario 5.
