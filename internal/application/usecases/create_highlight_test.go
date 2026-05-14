@@ -32,10 +32,12 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: true})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
 
 		review := domain_fakes.NewReviewBuilder().Build()
 
+		establishmentRepo.EXPECT().GetByID(ctx, review.EstablishmentID).Return(&domain.Establishment{ID: review.EstablishmentID, OwnerID: review.UserID, Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 		reviewRepo.EXPECT().GetByID(ctx, review.ID).Return(&review, nil)
 		highlightRepo.EXPECT().Exists(ctx, review.EstablishmentID, review.ID).Return(false, nil)
 		highlightRepo.EXPECT().CountByEstablishment(ctx, review.EstablishmentID).Return(0, nil)
@@ -55,9 +57,11 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: false})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: false})
 
 		review := domain_fakes.NewReviewBuilder().Build()
+		establishmentRepo.EXPECT().GetByID(ctx, review.EstablishmentID).Return(&domain.Establishment{ID: review.EstablishmentID, Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 
 		result, err := uc.Execute(ctx, review.UserID, review.EstablishmentID, review.ID)
 
@@ -69,11 +73,28 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: true})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
 
+		establishmentRepo.EXPECT().GetByID(ctx, "22222222-2222-4222-8222-222222222222").Return(&domain.Establishment{ID: "22222222-2222-4222-8222-222222222222", Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 		reviewRepo.EXPECT().GetByID(ctx, "missing").Return(nil, nil)
 
 		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "missing")
+
+		require.Nil(t, result)
+		requireCustomErrorType(t, err, customerror.NotFoundErrorType)
+	})
+
+	t.Run("should return not found when establishment does not exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
+		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
+
+		establishmentRepo.EXPECT().GetByID(ctx, "22222222-2222-4222-8222-222222222222").Return(nil, nil)
+
+		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "44444444-4444-4444-8444-444444444444")
 
 		require.Nil(t, result)
 		requireCustomErrorType(t, err, customerror.NotFoundErrorType)
@@ -83,9 +104,11 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: true})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
 
 		review := domain_fakes.NewReviewBuilder().Build()
+		establishmentRepo.EXPECT().GetByID(ctx, "99999999-9999-4999-8999-999999999999").Return(&domain.Establishment{ID: "99999999-9999-4999-8999-999999999999", Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 		reviewRepo.EXPECT().GetByID(ctx, review.ID).Return(&review, nil)
 
 		result, err := uc.Execute(ctx, review.UserID, "99999999-9999-4999-8999-999999999999", review.ID)
@@ -98,9 +121,11 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: true})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
 
 		review := domain_fakes.NewReviewBuilder().Build()
+		establishmentRepo.EXPECT().GetByID(ctx, review.EstablishmentID).Return(&domain.Establishment{ID: review.EstablishmentID, Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 		reviewRepo.EXPECT().GetByID(ctx, review.ID).Return(&review, nil)
 		highlightRepo.EXPECT().Exists(ctx, review.EstablishmentID, review.ID).Return(true, nil)
 
@@ -114,9 +139,11 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{allowed: true})
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{allowed: true})
 
 		review := domain_fakes.NewReviewBuilder().Build()
+		establishmentRepo.EXPECT().GetByID(ctx, review.EstablishmentID).Return(&domain.Establishment{ID: review.EstablishmentID, Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 		reviewRepo.EXPECT().GetByID(ctx, review.ID).Return(&review, nil)
 		highlightRepo.EXPECT().Exists(ctx, review.EstablishmentID, review.ID).Return(false, nil)
 		highlightRepo.EXPECT().CountByEstablishment(ctx, review.EstablishmentID).Return(domain.MaxHighlightsPerEstablishment, nil)
@@ -131,10 +158,12 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		highlightRepo := mock_domain.NewMockHighlightRepository(ctrl)
 		reviewRepo := mock_domain.NewMockReviewRepository(ctrl)
+		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
 		policyErr := errors.New("policy failed")
-		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, allowOperatorPolicy{err: policyErr})
+		uc := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, establishmentRepo, allowOperatorPolicy{err: policyErr})
 
 		review := domain_fakes.NewReviewBuilder().Build()
+		establishmentRepo.EXPECT().GetByID(ctx, review.EstablishmentID).Return(&domain.Establishment{ID: review.EstablishmentID, Name: "Cafe", Slug: "cafe", Category: "cafe"}, nil)
 
 		result, err := uc.Execute(ctx, review.UserID, review.EstablishmentID, review.ID)
 

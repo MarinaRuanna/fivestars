@@ -54,6 +54,7 @@ func CreateChiRoutes(h Handlers, jwtSecret string, corsAllowedOrigins []string) 
 		r.Get("/establishments/{id}", WithErrorEncoder(h.Establishments.GetEstablishment))
 		r.Get("/establishments/{id}/stats", WithErrorEncoder(h.Establishments.GetStats))
 		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments", WithErrorEncoder(h.Establishments.CreateEstablishment))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments/{id}/claim", WithErrorEncoder(h.Establishments.ClaimOwnership))
 		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments/{id}/highlights", WithErrorEncoder(h.Establishments.CreateHighlight))
 		r.With(auth.RequireAuth(jwtSecret)).Delete("/establishments/{id}/highlights/{reviewId}", WithErrorEncoder(h.Establishments.DeleteHighlight))
 	}

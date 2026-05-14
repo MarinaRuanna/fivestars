@@ -18,20 +18,23 @@ type EstablishmentOperatorPolicy interface {
 }
 
 type createHighlightUseCase struct {
-	highlightRepo  domain.HighlightRepository
-	reviewRepo     domain.ReviewRepository
-	operatorPolicy EstablishmentOperatorPolicy
+	highlightRepo     domain.HighlightRepository
+	reviewRepo        domain.ReviewRepository
+	establishmentRepo domain.EstablishmentRepository
+	operatorPolicy    EstablishmentOperatorPolicy
 }
 
 func NewCreateHighlightUseCase(
 	highlightRepo domain.HighlightRepository,
 	reviewRepo domain.ReviewRepository,
+	establishmentRepo domain.EstablishmentRepository,
 	operatorPolicy EstablishmentOperatorPolicy,
 ) CreateHighlightUseCase {
 	return &createHighlightUseCase{
-		highlightRepo:  highlightRepo,
-		reviewRepo:     reviewRepo,
-		operatorPolicy: operatorPolicy,
+		highlightRepo:     highlightRepo,
+		reviewRepo:        reviewRepo,
+		establishmentRepo: establishmentRepo,
+		operatorPolicy:    operatorPolicy,
 	}
 }
 
@@ -44,6 +47,14 @@ func (uc *createHighlightUseCase) Execute(ctx context.Context, userID, establish
 	}
 	if reviewID == "" {
 		return nil, customerror.NewValidationError("review ID is required")
+	}
+
+	establishment, err := uc.establishmentRepo.GetByID(ctx, establishmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch establishment: %w", err)
+	}
+	if establishment == nil {
+		return nil, customerror.NewNotFoundError("establishment not found")
 	}
 
 	allowed, err := uc.operatorPolicy.CanManageEstablishment(ctx, userID, establishmentID)

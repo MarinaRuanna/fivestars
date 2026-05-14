@@ -65,6 +65,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
 	getUserUC := usecases.NewGetUserUseCase(userRepo)
 	createEstablishmentUC := usecases.NewCreateEstablishmentUseCase(estabRepo)
+	claimEstablishmentOwnershipUC := usecases.NewClaimEstablishmentOwnershipUseCase(estabRepo)
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
 	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)
@@ -75,15 +76,15 @@ func BuildApp(ctx context.Context) (*App, error) {
 	likeReviewUC := usecases.NewLikeReviewUseCase(reviewRepo, reviewLikeRepo)
 	unlikeReviewUC := usecases.NewUnlikeReviewUseCase(reviewLikeRepo)
 	operatorPolicy := policy.NewEstablishmentOwnerOperator(estabRepo)
-	createHighlightUC := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, operatorPolicy)
-	deleteHighlightUC := usecases.NewDeleteHighlightUseCase(highlightRepo, operatorPolicy)
+	createHighlightUC := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, estabRepo, operatorPolicy)
+	deleteHighlightUC := usecases.NewDeleteHighlightUseCase(highlightRepo, estabRepo, operatorPolicy)
 	getEstablishmentStatsUC := usecases.NewGetEstablishmentStatsUseCase(estabRepo)
 
 	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsHandler(createEstablishmentUC, getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
+	estabHandler := controller.NewEstablishmentsHandler(createEstablishmentUC, claimEstablishmentOwnershipUC, getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
 	checkinsHandler := controller.NewCheckinsHandler(createCheckinUC, listCheckinsUC)
 	reviewsHandler := controller.NewReviewsHandler(createReviewUC, getReviewUC, listReviewsUC, likeReviewUC, unlikeReviewUC)
 

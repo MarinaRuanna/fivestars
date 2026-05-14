@@ -15,6 +15,7 @@ const establishmentBodyMaxBytes int64 = 32 << 10
 
 type EstablishmentsHandler struct {
 	createUC          usecases.CreateEstablishmentUseCase
+	claimOwnershipUC  usecases.ClaimEstablishmentOwnershipUseCase
 	getDetailUC       usecases.GetEstablishmentDetailUseCase
 	listUC            usecases.ListEstablishmentsUseCase
 	statsUC           usecases.GetEstablishmentStatsUseCase
@@ -24,6 +25,7 @@ type EstablishmentsHandler struct {
 
 func NewEstablishmentsHandler(
 	createUC usecases.CreateEstablishmentUseCase,
+	claimOwnershipUC usecases.ClaimEstablishmentOwnershipUseCase,
 	getDetailUC usecases.GetEstablishmentDetailUseCase,
 	listUC usecases.ListEstablishmentsUseCase,
 	statsUC usecases.GetEstablishmentStatsUseCase,
@@ -32,6 +34,7 @@ func NewEstablishmentsHandler(
 ) *EstablishmentsHandler {
 	return &EstablishmentsHandler{
 		createUC:          createUC,
+		claimOwnershipUC:  claimOwnershipUC,
 		getDetailUC:       getDetailUC,
 		listUC:            listUC,
 		statsUC:           statsUC,
@@ -63,6 +66,29 @@ func (c *EstablishmentsHandler) CreateEstablishment(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *EstablishmentsHandler) ClaimOwnership(w http.ResponseWriter, r *http.Request) error {
+	userID := auth.UserIDFromContext(r.Context())
+	if userID == "" {
+		return customerror.NewUnauthorizedError("user not authenticated")
+	}
+
+	establishmentID := chi.URLParam(r, "id")
+	establishment, err := c.claimOwnershipUC.Execute(r.Context(), userID, establishmentID)
+	if err != nil {
+		return err
+	}
+
+	resp := ClaimOwnershipFromDomain(establishment)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		return err
 	}

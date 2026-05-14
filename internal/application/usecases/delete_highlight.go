@@ -14,17 +14,20 @@ type DeleteHighlightUseCase interface {
 }
 
 type deleteHighlightUseCase struct {
-	highlightRepo  domain.HighlightRepository
-	operatorPolicy EstablishmentOperatorPolicy
+	highlightRepo     domain.HighlightRepository
+	establishmentRepo domain.EstablishmentRepository
+	operatorPolicy    EstablishmentOperatorPolicy
 }
 
 func NewDeleteHighlightUseCase(
 	highlightRepo domain.HighlightRepository,
+	establishmentRepo domain.EstablishmentRepository,
 	operatorPolicy EstablishmentOperatorPolicy,
 ) DeleteHighlightUseCase {
 	return &deleteHighlightUseCase{
-		highlightRepo:  highlightRepo,
-		operatorPolicy: operatorPolicy,
+		highlightRepo:     highlightRepo,
+		establishmentRepo: establishmentRepo,
+		operatorPolicy:    operatorPolicy,
 	}
 }
 
@@ -37,6 +40,14 @@ func (uc *deleteHighlightUseCase) Execute(ctx context.Context, userID, establish
 	}
 	if reviewID == "" {
 		return customerror.NewValidationError("review ID is required")
+	}
+
+	establishment, err := uc.establishmentRepo.GetByID(ctx, establishmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch establishment: %w", err)
+	}
+	if establishment == nil {
+		return customerror.NewNotFoundError("establishment not found")
 	}
 
 	allowed, err := uc.operatorPolicy.CanManageEstablishment(ctx, userID, establishmentID)

@@ -59,13 +59,15 @@ execution plan without a delivery path.
 
 ## Authorization Decision
 
-- For MVP implementation, highlight management will depend on an explicit
-  authorization policy interface in the use case layer instead of coupling
-  directly to a permanent schema choice now.
-- The first concrete rule will be: only authenticated users explicitly approved
-  by the injected establishment-operator policy may create or remove highlights.
-- This keeps Phase 5 unblocked while preserving room to evolve later to
-  `establishment_users` or `owner_id` without rewriting the endpoint contracts.
+- Highlight management depends on an explicit authorization policy interface in
+  the use case layer.
+- The first concrete rule is ownership-based: only the authenticated
+  `owner_id` of the establishment may create or remove highlights.
+- To support preexisting establishments created before `owner_id` existed, the
+  API exposes an ownership-claim endpoint so the operator path does not depend
+  on manual database backfill.
+- This keeps the endpoint contracts stable while preserving room to evolve
+  later to `establishment_users`.
 
 ## API Contract
 
@@ -116,7 +118,28 @@ Error cases:
 
 - `401` when the caller is not authenticated.
 - `403` when the caller is not allowed to manage the establishment.
-- `404` when the highlight does not exist.
+- `404` when the establishment or highlight does not exist.
+
+### Claim Establishment Ownership
+
+- Method: `POST`
+- Path: `/establishments/:id/claim`
+- Auth: `authenticated user`
+
+Success response:
+
+```json
+{
+  "establishment_id": "uuid",
+  "owner_id": "uuid"
+}
+```
+
+Error cases:
+
+- `401` when the caller is not authenticated.
+- `404` when the establishment does not exist.
+- `409` when the establishment is already claimed by another user.
 
 ### Get Establishment Stats
 

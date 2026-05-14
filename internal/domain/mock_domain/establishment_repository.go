@@ -55,6 +55,21 @@ func (mr *MockEstablishmentRepositoryMockRecorder) Create(ctx, establishment any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockEstablishmentRepository)(nil).Create), ctx, establishment)
 }
 
+// ClaimOwnership mocks base method.
+func (m *MockEstablishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID string) (*domain.Establishment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClaimOwnership", ctx, establishmentID, ownerID)
+	ret0, _ := ret[0].(*domain.Establishment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClaimOwnership indicates an expected call of ClaimOwnership.
+func (mr *MockEstablishmentRepositoryMockRecorder) ClaimOwnership(ctx, establishmentID, ownerID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimOwnership", reflect.TypeOf((*MockEstablishmentRepository)(nil).ClaimOwnership), ctx, establishmentID, ownerID)
+}
+
 // DistanceTo mocks base method.
 func (m *MockEstablishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {
 	m.ctrl.T.Helper()

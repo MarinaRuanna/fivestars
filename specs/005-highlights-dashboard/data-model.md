@@ -87,16 +87,18 @@ Null-handling:
 - average should default to `0` if there are no reviews
 - counts should default to `0`
 
-## Authorization Placeholder
+## Authorization Model
 
-Phase 5 requires operator authorization, but the storage model remains deferred.
+Phase 5 uses an ownership-based operator rule for MVP.
 
-MVP decision:
+Current decision:
 
-- highlight management will depend on an establishment-operator policy interface
-  injected into the use cases
-- the implementation may start with a simple in-memory or repository-backed
-  checker without forcing a permanent schema choice in this slice
+- `establishments.owner_id` identifies the operator allowed to manage
+  highlights
+- highlight management still depends on an establishment-operator policy
+  interface injected into the use cases
+- preexisting establishments can be adopted through
+  `POST /establishments/:id/claim`, avoiding mandatory manual backfill
 
 Preferred long-term model:
 
@@ -129,7 +131,7 @@ Migration should:
 
 1. create `highlights`
 2. add constraints and indexes
-3. avoid backfill requirements for MVP
+3. support ownership claim for legacy rows without requiring immediate backfill
 
 ## Open Technical Decisions
 

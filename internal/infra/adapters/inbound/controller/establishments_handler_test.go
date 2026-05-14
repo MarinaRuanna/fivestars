@@ -36,6 +36,15 @@ func (s stubCreateEstablishmentUseCase) Execute(ctx context.Context, userID stri
 	return s.result, s.err
 }
 
+type stubClaimEstablishmentOwnershipUseCase struct {
+	result *domain.Establishment
+	err    error
+}
+
+func (s stubClaimEstablishmentOwnershipUseCase) Execute(ctx context.Context, userID, establishmentID string) (*domain.Establishment, error) {
+	return s.result, s.err
+}
+
 type stubListEstablishmentsUseCase struct {
 	result []domain.Establishment
 	err    error
@@ -74,6 +83,7 @@ func (s stubDeleteHighlightUseCase) Execute(ctx context.Context, userID, establi
 func TestEstablishmentsHandler_GetStats(t *testing.T) {
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{
@@ -107,6 +117,7 @@ func TestEstablishmentsHandler_CreateHighlight(t *testing.T) {
 	now := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -140,6 +151,7 @@ func TestEstablishmentsHandler_CreateHighlight(t *testing.T) {
 func TestEstablishmentsHandler_DeleteHighlight(t *testing.T) {
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -182,6 +194,7 @@ func TestEstablishmentsHandler_GetEstablishment(t *testing.T) {
 	}
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{
 			result: &domain.EstablishmentDetail{
 				Establishment: establishment,
@@ -213,6 +226,7 @@ func TestEstablishmentsHandler_GetEstablishment(t *testing.T) {
 func TestEstablishmentsHandler_CreateHighlight_Unauthorized(t *testing.T) {
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -244,6 +258,7 @@ func TestEstablishmentsHandler_CreateEstablishment(t *testing.T) {
 	}
 	handler := NewEstablishmentsHandler(
 		stubCreateEstablishmentUseCase{result: &establishment},
+		stubClaimEstablishmentOwnershipUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -265,6 +280,37 @@ func TestEstablishmentsHandler_CreateEstablishment(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	assert.Equal(t, establishment.ID, resp.ID)
 	assert.Equal(t, establishment.Name, resp.Name)
+}
+
+func TestEstablishmentsHandler_ClaimOwnership(t *testing.T) {
+	establishment := domain.Establishment{
+		ID:      "22222222-2222-4222-8222-222222222222",
+		OwnerID: "11111111-1111-4111-8111-111111111111",
+	}
+	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
+		stubClaimEstablishmentOwnershipUseCase{result: &establishment},
+		stubGetEstablishmentDetailUseCase{},
+		stubListEstablishmentsUseCase{},
+		stubGetEstablishmentStatsUseCase{},
+		stubCreateHighlightUseCase{},
+		stubDeleteHighlightUseCase{},
+	)
+
+	req := httptest.NewRequest(http.MethodPost, "/establishments/222/claim", nil)
+	req = req.WithContext(auth.WithUserID(req.Context(), "11111111-1111-4111-8111-111111111111"))
+	req = withRouteParam(req, "id", establishment.ID)
+	rec := httptest.NewRecorder()
+
+	err := handler.ClaimOwnership(rec, req)
+
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp ClaimEstablishmentOwnershipResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, establishment.ID, resp.EstablishmentID)
+	assert.Equal(t, establishment.OwnerID, resp.OwnerID)
 }
 
 func withRouteParam(req *http.Request, key, value string) *http.Request {

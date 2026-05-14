@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"fivestars/internal/domain"
+	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -33,6 +34,82 @@ func (r *establishmentRepository) Create(ctx context.Context, establishment *dom
 	}
 
 	return nil
+}
+
+func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID string) (*domain.Establishment, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, postgres.MapError(err, "establishment")
+	}
+	defer tx.Rollback(ctx)
+
+	row := tx.QueryRow(ctx, `
+		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+		       COALESCE(address, '') as address,
+		       lat, lng,
+		       COALESCE(qr_code, '') as qr_code,
+		       created_at, updated_at
+		FROM establishments
+		WHERE id = $1
+		FOR UPDATE
+	`, establishmentID)
+
+	var dto EstablishmentDTO
+	if err := row.Scan(
+		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.CreatedAt, &dto.UpdatedAt,
+	); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	if dto.OwnerID != "" && dto.OwnerID != ownerID {
+		return nil, customerror.NewConflictError("establishment already claimed")
+	}
+	if dto.OwnerID == ownerID {
+		establishment, err := dto.ToDomain()
+		if err != nil {
+			return nil, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, postgres.MapError(err, "establishment")
+		}
+		return establishment, nil
+	}
+
+	row = tx.QueryRow(ctx, `
+		UPDATE establishments
+		SET owner_id = NULLIF($2, '')::uuid,
+		    updated_at = NOW()
+		WHERE id = $1 AND owner_id IS NULL
+		RETURNING id, COALESCE(owner_id::text, ''), name, slug, category,
+		          COALESCE(address, '') as address,
+		          lat, lng,
+		          COALESCE(qr_code, '') as qr_code,
+		          created_at, updated_at
+	`, establishmentID, ownerID)
+
+	if err := row.Scan(
+		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.CreatedAt, &dto.UpdatedAt,
+	); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, customerror.NewConflictError("establishment already claimed")
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	establishment, err := dto.ToDomain()
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	return establishment, nil
 }
 
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {

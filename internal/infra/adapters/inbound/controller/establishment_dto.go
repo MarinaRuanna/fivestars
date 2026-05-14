@@ -50,6 +50,11 @@ type CreateEstablishmentRequest struct {
 	QRCode   string   `json:"qr_code,omitempty"`
 }
 
+type ClaimEstablishmentOwnershipResponse struct {
+	EstablishmentID string `json:"establishment_id"`
+	OwnerID         string `json:"owner_id"`
+}
+
 type HighlightResponse struct {
 	EstablishmentID string `json:"establishment_id"`
 	ReviewID        string `json:"review_id"`
@@ -145,5 +150,12 @@ func ToDomainEstablishment(req CreateEstablishmentRequest, userID string) domain
 		Lat:      req.Lat,
 		Lng:      req.Lng,
 		QRCode:   req.QRCode,
+	}
+}
+
+func ClaimOwnershipFromDomain(e *domain.Establishment) ClaimEstablishmentOwnershipResponse {
+	return ClaimEstablishmentOwnershipResponse{
+		EstablishmentID: e.ID,
+		OwnerID:         e.OwnerID,
 	}
 }
