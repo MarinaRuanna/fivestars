@@ -36,7 +36,7 @@ func (r *establishmentRepository) Create(ctx context.Context, establishment *dom
 	return nil
 }
 
-func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID string) (*domain.Establishment, error) {
+func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimQRCode string) (*domain.Establishment, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, postgres.MapError(err, "establishment")
@@ -69,6 +69,9 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 		return nil, customerror.NewConflictError("establishment already claimed")
 	}
 	if dto.OwnerID == ownerID {
+		if dto.QRCode == "" || dto.QRCode != claimQRCode {
+			return nil, customerror.NewForbiddenError("invalid claim qr_code")
+		}
 		establishment, err := dto.ToDomain()
 		if err != nil {
 			return nil, err
@@ -77,6 +80,9 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 			return nil, postgres.MapError(err, "establishment")
 		}
 		return establishment, nil
+	}
+	if dto.QRCode == "" || dto.QRCode != claimQRCode {
+		return nil, customerror.NewForbiddenError("invalid claim qr_code")
 	}
 
 	row = tx.QueryRow(ctx, `

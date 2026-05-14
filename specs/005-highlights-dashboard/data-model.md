@@ -97,6 +97,7 @@ Current decision:
   highlights
 - highlight management still depends on an establishment-operator policy
   interface injected into the use cases
+- ownership claim requires proof of possession via the establishment `qr_code`
 - preexisting establishments can be adopted through
   `POST /establishments/:id/claim`, avoiding mandatory manual backfill
 

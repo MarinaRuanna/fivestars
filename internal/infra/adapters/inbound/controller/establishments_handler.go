@@ -80,7 +80,15 @@ func (c *EstablishmentsHandler) ClaimOwnership(w http.ResponseWriter, r *http.Re
 	}
 
 	establishmentID := chi.URLParam(r, "id")
-	establishment, err := c.claimOwnershipUC.Execute(r.Context(), userID, establishmentID)
+	var req ClaimEstablishmentOwnershipRequest
+	if err := decodeStrictJSONBody(w, r, &req, highlightBodyMaxBytes); err != nil {
+		return err
+	}
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	establishment, err := c.claimOwnershipUC.Execute(r.Context(), userID, establishmentID, req.QRCode)
 	if err != nil {
 		return err
 	}

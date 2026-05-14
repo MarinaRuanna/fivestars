@@ -10,7 +10,7 @@ import (
 //go:generate go run go.uber.org/mock/mockgen -destination mock_domain/establishment_repository.go -package mock_domain . EstablishmentRepository
 type EstablishmentRepository interface {
 	Create(ctx context.Context, establishment *Establishment) error
-	ClaimOwnership(ctx context.Context, establishmentID, ownerID string) (*Establishment, error)
+	ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimQRCode string) (*Establishment, error)
 	List(ctx context.Context) ([]Establishment, error)
 	GetByID(ctx context.Context, id string) (*Establishment, error)
 	GetStats(ctx context.Context, id string) (*EstablishmentStats, error)

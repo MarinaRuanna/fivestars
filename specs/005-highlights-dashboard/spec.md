@@ -126,6 +126,14 @@ Error cases:
 - Path: `/establishments/:id/claim`
 - Auth: `authenticated user`
 
+Request:
+
+```json
+{
+  "qr_code": "secret"
+}
+```
+
 Success response:
 
 ```json
@@ -137,7 +145,9 @@ Success response:
 
 Error cases:
 
+- `400` when `qr_code` is missing.
 - `401` when the caller is not authenticated.
+- `403` when the provided `qr_code` does not prove possession of the establishment.
 - `404` when the establishment does not exist.
 - `409` when the establishment is already claimed by another user.
 

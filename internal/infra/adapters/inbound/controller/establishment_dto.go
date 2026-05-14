@@ -50,6 +50,10 @@ type CreateEstablishmentRequest struct {
 	QRCode   string   `json:"qr_code,omitempty"`
 }
 
+type ClaimEstablishmentOwnershipRequest struct {
+	QRCode string `json:"qr_code" validate:"required"`
+}
+
 type ClaimEstablishmentOwnershipResponse struct {
 	EstablishmentID string `json:"establishment_id"`
 	OwnerID         string `json:"owner_id"`
@@ -78,6 +82,14 @@ func (r *CreateHighlightRequest) Validate() error {
 }
 
 func (r *CreateEstablishmentRequest) Validate() error {
+	if err := validator.Validate(r); err != nil {
+		return customerror.NewValidationError(err.Error())
+	}
+
+	return nil
+}
+
+func (r *ClaimEstablishmentOwnershipRequest) Validate() error {
 	if err := validator.Validate(r); err != nil {
 		return customerror.NewValidationError(err.Error())
 	}
