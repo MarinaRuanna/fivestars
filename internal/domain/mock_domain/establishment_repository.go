@@ -71,6 +71,21 @@ func (mr *MockEstablishmentRepositoryMockRecorder) GetByID(ctx, id any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockEstablishmentRepository)(nil).GetByID), ctx, id)
 }
 
+// GetStats mocks base method.
+func (m *MockEstablishmentRepository) GetStats(ctx context.Context, id string) (*domain.EstablishmentStats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", ctx, id)
+	ret0, _ := ret[0].(*domain.EstablishmentStats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockEstablishmentRepositoryMockRecorder) GetStats(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockEstablishmentRepository)(nil).GetStats), ctx, id)
+}
+
 // List mocks base method.
 func (m *MockEstablishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	m.ctrl.T.Helper()

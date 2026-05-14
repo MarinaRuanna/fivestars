@@ -57,6 +57,16 @@ execution plan without a delivery path.
 - Stats must reflect all reviews for the establishment, not only highlighted
   reviews.
 
+## Authorization Decision
+
+- For MVP implementation, highlight management will depend on an explicit
+  authorization policy interface in the use case layer instead of coupling
+  directly to a permanent schema choice now.
+- The first concrete rule will be: only authenticated users explicitly approved
+  by the injected establishment-operator policy may create or remove highlights.
+- This keeps Phase 5 unblocked while preserving room to evolve later to
+  `establishment_users` or `owner_id` without rewriting the endpoint contracts.
+
 ## API Contract
 
 ### Create Highlight
@@ -175,8 +185,6 @@ Error cases:
 
 ## Open Questions
 
-- What is the first MVP rule for establishment operator authorization:
-  hardcoded ownership, role-based auth, or an `establishment_users` table?
 - Should stats remain public, or should they require operator auth from day one?
 - Should highlighted reviews be limited to positive ratings only, or can any
   valid review be highlighted in MVP?

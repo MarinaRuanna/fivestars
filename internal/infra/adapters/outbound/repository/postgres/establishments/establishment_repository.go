@@ -19,7 +19,7 @@ func NewEstablishmentRepository(pool *pgxpool.Pool) domain.EstablishmentReposito
 
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, slug, category,
+		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
 		       COALESCE(address, '') as address,
 		       lat, lng,
 		       COALESCE(qr_code, '') as qr_code,
@@ -36,7 +36,7 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 	for rows.Next() {
 		var estabDTO EstablishmentDTO
 		err := rows.Scan(
-			&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+			&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
 			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 		)
 		if err != nil {
@@ -57,7 +57,7 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 
 func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID string) (*domain.Establishment, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, slug, category,
+		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
 		       COALESCE(address, '') as address,
 		       lat, lng,
 		       COALESCE(qr_code, '') as qr_code,
@@ -68,7 +68,7 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 
 	var estabDTO EstablishmentDTO
 	if err := row.Scan(
-		&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+		&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
 		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 	); err != nil {
 		if postgres.IsNoRows(err) {
@@ -82,6 +82,44 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 		return nil, err
 	}
 	return estab, nil
+}
+
+func (r *establishmentRepository) GetStats(ctx context.Context, establishmentID string) (*domain.EstablishmentStats, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(review_stats.average_rating, 0),
+			COALESCE(review_stats.total_reviews, 0),
+			COALESCE(like_stats.total_likes, 0),
+			COALESCE(highlight_stats.highlighted_review_count, 0)
+		FROM establishments e
+		LEFT JOIN (
+			SELECT establishment_id, AVG(rating)::float8 AS average_rating, COUNT(*) AS total_reviews
+			FROM reviews
+			GROUP BY establishment_id
+		) review_stats ON review_stats.establishment_id = e.id
+		LEFT JOIN (
+			SELECT r.establishment_id, COUNT(*) AS total_likes
+			FROM reviews r
+			JOIN review_likes rl ON rl.review_id = r.id
+			GROUP BY r.establishment_id
+		) like_stats ON like_stats.establishment_id = e.id
+		LEFT JOIN (
+			SELECT establishment_id, COUNT(*) AS highlighted_review_count
+			FROM highlights
+			GROUP BY establishment_id
+		) highlight_stats ON highlight_stats.establishment_id = e.id
+		WHERE e.id = $1
+	`, establishmentID)
+
+	var dto EstablishmentStatsDTO
+	if err := row.Scan(&dto.AverageRating, &dto.TotalReviews, &dto.TotalLikes, &dto.HighlightedReviewCount); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	return dto.ToDomain()
 }
 
 func (r *establishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {

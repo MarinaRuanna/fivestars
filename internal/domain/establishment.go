@@ -11,11 +11,13 @@ import (
 type EstablishmentRepository interface {
 	List(ctx context.Context) ([]Establishment, error)
 	GetByID(ctx context.Context, id string) (*Establishment, error)
+	GetStats(ctx context.Context, id string) (*EstablishmentStats, error)
 	DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error)
 }
 
 type Establishment struct {
 	ID        string `validate:"required"`
+	OwnerID   string `validate:"omitempty,uuid4"`
 	Name      string `validate:"required"`
 	Slug      string
 	Category  string `validate:"required"`

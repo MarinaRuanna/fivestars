@@ -37,6 +37,8 @@ review representation.
 - Incremental MVP slice: yes, start with minimal dashboard stats and highlight
   management only.
 - Acceptance scenarios identified: yes, five scenarios captured in `spec.md`.
+- TDD approach defined: yes, each use case and HTTP slice should begin with a
+  failing test before implementation.
 
 ## Design
 
@@ -57,7 +59,8 @@ review representation.
 - Add `DeleteHighlightUseCase`.
 - Add `GetEstablishmentStatsUseCase`.
 - Extend establishment detail retrieval to include highlighted reviews.
-- Keep authorization policy behind a dedicated check so it can evolve later.
+- Keep authorization behind a dedicated establishment-operator policy interface
+  so schema decisions can evolve later without changing endpoint contracts.
 
 ### Infrastructure Layer
 
@@ -71,16 +74,16 @@ review representation.
 ## Rollout Sequence
 
 1. Add migration and repository interfaces.
-2. Add domain entities and use case tests.
-3. Implement Postgres repositories.
-4. Add handlers and route wiring.
-5. Validate targeted tests and manual API flows.
+2. Add failing tests for use cases and repository-facing behavior.
+3. Implement Postgres repositories and use cases until tests pass.
+4. Add failing handler tests, then handlers and route wiring.
+5. Refactor and validate targeted tests plus manual API flows.
 
 ## Risks
 
 - Authorization is underspecified for establishment operators.
-  - Mitigation: isolate the check behind a clear use case dependency or explicit
-    placeholder rule.
+  - Mitigation: use an explicit policy dependency in the use cases for MVP, then
+    back it with `establishment_users` or `owner_id` in a later slice.
 - Establishment detail payload may grow if review enrichment is duplicated.
   - Mitigation: reuse review DTO/domain mapping where possible.
 - Stats query may duplicate existing review aggregation logic.

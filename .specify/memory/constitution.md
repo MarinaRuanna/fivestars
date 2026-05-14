@@ -44,11 +44,20 @@ Each feature spec must define acceptance scenarios before implementation. Use
 cases and repositories should be shaped so they can be validated with automated
 tests at the right level.
 
+### 6. TDD by Default
+
+Task implementation should follow Test-Driven Development by default. New
+behavior should start with a failing test that expresses the intended outcome,
+followed by the minimal implementation to make it pass, and then refactoring as
+needed. If a task cannot reasonably start with a test, that exception should be
+made explicit in the plan or task notes.
+
 ## Delivery Rules
 
 - `spec.md` captures WHAT and WHY.
 - `plan.md` captures HOW.
 - `tasks.md` captures execution order and ownership of work.
+- Implementation tasks should prefer a red-green-refactor flow.
 - Migrations must be explicit and forward-only within a feature branch.
 - New behavior in existing flows must preserve current contracts unless the spec
   explicitly documents a breaking change.

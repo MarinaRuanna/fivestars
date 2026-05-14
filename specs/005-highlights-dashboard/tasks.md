@@ -15,26 +15,28 @@
 
 ## Phase 3. Use Cases
 
-- [ ] T006 Implement `CreateHighlightUseCase` with same-establishment, duplicate,
-  limit, and authorization checks.
-- [ ] T007 Implement `DeleteHighlightUseCase`.
-- [ ] T008 Implement `GetEstablishmentStatsUseCase`.
-- [ ] T009 Add unit tests for the three use cases above.
+- [ ] T006 Add failing unit tests for `CreateHighlightUseCase` covering
+  same-establishment, duplicate, limit, and authorization rules.
+- [ ] T007 Implement `CreateHighlightUseCase` until the tests pass.
+- [ ] T008 Add failing unit tests for `DeleteHighlightUseCase` and
+  `GetEstablishmentStatsUseCase`.
+- [ ] T009 Implement `DeleteHighlightUseCase` and `GetEstablishmentStatsUseCase`
+  until the tests pass.
 
 ## Phase 4. Persistence
 
-- [ ] T010 Implement Postgres highlight repository with DTO mapping and error
-  translation.
-- [ ] T011 Extend establishment/review Postgres repositories to return
+- [ ] T010 Add failing tests or verification harnesses for Postgres highlight
+  repository behavior where practical.
+- [ ] T011 Implement Postgres highlight repository with DTO mapping and error
+  translation, then extend establishment/review repositories to return
   highlighted reviews and aggregate stats.
-- [ ] T012 Add repository-level tests if the project pattern already supports
-  them; otherwise validate with focused use case coverage plus targeted queries.
+- [ ] T012 Refactor persistence code and complete repository-level validation.
 
 ## Phase 5. HTTP Delivery
 
-- [ ] T013 Add controller DTOs for create highlight requests and stats
-  responses.
-- [ ] T014 Add handlers for:
+- [ ] T013 Add failing controller/HTTP tests for create/delete highlight and
+  stats responses.
+- [ ] T014 Add controller DTOs and handlers for:
   - `POST /establishments/:id/highlights`
   - `DELETE /establishments/:id/highlights/:reviewId`
   - `GET /establishments/:id/stats`

@@ -13,10 +13,12 @@ import (
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/checkins"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/establishments"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/highlights"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/reviewlikes"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/reviews"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/users"
 	"fivestars/internal/infra/config"
+	"fivestars/internal/infra/policy"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -56,6 +58,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 	checkinRepo := checkins.NewCheckinRepository(pool)
 	reviewRepo := reviews.NewReviewRepository(pool)
 	reviewLikeRepo := reviewlikes.NewReviewLikeRepository(pool)
+	highlightRepo := highlights.NewHighlightRepository(pool)
 
 	// ====== 4. USECASES ======
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
@@ -64,17 +67,22 @@ func BuildApp(ctx context.Context) (*App, error) {
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
 	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)
+	getEstablishmentDetailUC := usecases.NewGetEstablishmentDetailUseCase(estabRepo, highlightRepo, reviewRepo)
 	createReviewUC := usecases.NewCreateReviewUseCase(reviewRepo, checkinRepo)
 	getReviewUC := usecases.NewGetReviewUseCase(reviewRepo)
 	listReviewsUC := usecases.NewListReviewsByEstablishmentUseCase(reviewRepo)
 	likeReviewUC := usecases.NewLikeReviewUseCase(reviewRepo, reviewLikeRepo)
 	unlikeReviewUC := usecases.NewUnlikeReviewUseCase(reviewLikeRepo)
+	operatorPolicy := policy.NewEstablishmentOwnerOperator(estabRepo)
+	createHighlightUC := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, operatorPolicy)
+	deleteHighlightUC := usecases.NewDeleteHighlightUseCase(highlightRepo, operatorPolicy)
+	getEstablishmentStatsUC := usecases.NewGetEstablishmentStatsUseCase(estabRepo)
 
 	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsHandler(listEstabUC)
+	estabHandler := controller.NewEstablishmentsHandler(getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
 	checkinsHandler := controller.NewCheckinsHandler(createCheckinUC, listCheckinsUC)
 	reviewsHandler := controller.NewReviewsHandler(createReviewUC, getReviewUC, listReviewsUC, likeReviewUC, unlikeReviewUC)
 

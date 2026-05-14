@@ -89,7 +89,14 @@ Null-handling:
 
 ## Authorization Placeholder
 
-Phase 5 requires operator authorization, but the ownership model is still open.
+Phase 5 requires operator authorization, but the storage model remains deferred.
+
+MVP decision:
+
+- highlight management will depend on an establishment-operator policy interface
+  injected into the use cases
+- the implementation may start with a simple in-memory or repository-backed
+  checker without forcing a permanent schema choice in this slice
 
 Preferred long-term model:
 
@@ -99,8 +106,8 @@ Preferred long-term model:
   - `role`
   - `created_at`
 
-For MVP planning, keep the highlight use cases behind an explicit authorization
-check so the implementation can start with a temporary rule and migrate later.
+This keeps the HTTP and use case contracts stable while leaving room to evolve
+the persistence strategy later.
 
 ## Repository Impact
 

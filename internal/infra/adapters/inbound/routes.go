@@ -51,6 +51,10 @@ func CreateChiRoutes(h Handlers, jwtSecret string, corsAllowedOrigins []string) 
 	// Establishments: list endpoint
 	if h.Establishments != nil {
 		r.Get("/establishments", WithErrorEncoder(h.Establishments.ListEstablishments))
+		r.Get("/establishments/{id}", WithErrorEncoder(h.Establishments.GetEstablishment))
+		r.Get("/establishments/{id}/stats", WithErrorEncoder(h.Establishments.GetStats))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments/{id}/highlights", WithErrorEncoder(h.Establishments.CreateHighlight))
+		r.With(auth.RequireAuth(jwtSecret)).Delete("/establishments/{id}/highlights/{reviewId}", WithErrorEncoder(h.Establishments.DeleteHighlight))
 	}
 
 	// Checkins: create (protected) and list user's checkins
