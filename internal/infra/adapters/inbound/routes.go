@@ -18,6 +18,7 @@ type Handlers struct {
 	User           *controller.UserHandler
 	Establishments *controller.EstablishmentsHandler
 	Checkins       *controller.CheckinsHandler
+	Reviews        *controller.ReviewsHandler
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
@@ -56,6 +57,15 @@ func CreateChiRoutes(h Handlers, jwtSecret string, corsAllowedOrigins []string) 
 	if h.Checkins != nil {
 		r.With(auth.RequireAuth(jwtSecret)).Post("/checkins", WithErrorEncoder(h.Checkins.CreateCheckin))
 		r.With(auth.RequireAuth(jwtSecret)).Get("/checkins/me", WithErrorEncoder(h.Checkins.ListMyCheckins))
+	}
+
+	// Reviews: create (protected), list by establishment, get by id, like/unlike
+	if h.Reviews != nil {
+		r.With(auth.RequireAuth(jwtSecret)).Post("/reviews", WithErrorEncoder(h.Reviews.CreateReview))
+		r.Get("/establishments/{id}/reviews", WithErrorEncoder(h.Reviews.ListByEstablishment))
+		r.Get("/reviews/{id}", WithErrorEncoder(h.Reviews.GetReview))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/reviews/{id}/like", WithErrorEncoder(h.Reviews.LikeReview))
+		r.With(auth.RequireAuth(jwtSecret)).Delete("/reviews/{id}/like", WithErrorEncoder(h.Reviews.UnlikeReview))
 	}
 
 	return r

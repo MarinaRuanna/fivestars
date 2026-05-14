@@ -42,6 +42,27 @@ func (dto *UserDTO) ToDomain() (*domain.User, error) {
 	return user, nil
 }
 
+func FromDomain(user *domain.User) (*UserDTO, error) {
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+
+	dto := &UserDTO{
+		Email:        user.Email,
+		PasswordHash: user.PasswordHash,
+		Name:         user.Name,
+		Level:        user.Level,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+	}
+
+	if user.AvatarURL != "" {
+		dto.AvatarURL = &user.AvatarURL
+	}
+
+	return dto, nil
+}
+
 func uuidToString(u pgtype.UUID) string {
 	if !u.Valid {
 		return ""
