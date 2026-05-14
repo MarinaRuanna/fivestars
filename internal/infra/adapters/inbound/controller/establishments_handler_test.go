@@ -27,6 +27,15 @@ func (s stubGetEstablishmentDetailUseCase) Execute(ctx context.Context, establis
 	return s.result, s.err
 }
 
+type stubCreateEstablishmentUseCase struct {
+	result *domain.Establishment
+	err    error
+}
+
+func (s stubCreateEstablishmentUseCase) Execute(ctx context.Context, userID string, input domain.Establishment) (*domain.Establishment, error) {
+	return s.result, s.err
+}
+
 type stubListEstablishmentsUseCase struct {
 	result []domain.Establishment
 	err    error
@@ -64,6 +73,7 @@ func (s stubDeleteHighlightUseCase) Execute(ctx context.Context, userID, establi
 
 func TestEstablishmentsHandler_GetStats(t *testing.T) {
 	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{
@@ -96,6 +106,7 @@ func TestEstablishmentsHandler_GetStats(t *testing.T) {
 func TestEstablishmentsHandler_CreateHighlight(t *testing.T) {
 	now := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
 	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -128,6 +139,7 @@ func TestEstablishmentsHandler_CreateHighlight(t *testing.T) {
 
 func TestEstablishmentsHandler_DeleteHighlight(t *testing.T) {
 	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -169,6 +181,7 @@ func TestEstablishmentsHandler_GetEstablishment(t *testing.T) {
 		UpdatedAt:       time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
 	}
 	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
 		stubGetEstablishmentDetailUseCase{
 			result: &domain.EstablishmentDetail{
 				Establishment: establishment,
@@ -199,6 +212,7 @@ func TestEstablishmentsHandler_GetEstablishment(t *testing.T) {
 
 func TestEstablishmentsHandler_CreateHighlight_Unauthorized(t *testing.T) {
 	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{},
 		stubGetEstablishmentDetailUseCase{},
 		stubListEstablishmentsUseCase{},
 		stubGetEstablishmentStatsUseCase{},
@@ -216,6 +230,41 @@ func TestEstablishmentsHandler_CreateHighlight_Unauthorized(t *testing.T) {
 	errorType, ok := customerror.TypeOf(err)
 	require.True(t, ok)
 	assert.Equal(t, customerror.UnauthorizedErrorType, errorType)
+}
+
+func TestEstablishmentsHandler_CreateEstablishment(t *testing.T) {
+	establishment := domain.Establishment{
+		ID:        "22222222-2222-4222-8222-222222222222",
+		OwnerID:   "11111111-1111-4111-8111-111111111111",
+		Name:      "Cafe Central",
+		Slug:      "cafe-central",
+		Category:  "cafe",
+		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	handler := NewEstablishmentsHandler(
+		stubCreateEstablishmentUseCase{result: &establishment},
+		stubGetEstablishmentDetailUseCase{},
+		stubListEstablishmentsUseCase{},
+		stubGetEstablishmentStatsUseCase{},
+		stubCreateHighlightUseCase{},
+		stubDeleteHighlightUseCase{},
+	)
+
+	body := bytes.NewBufferString(`{"name":"Cafe Central","slug":"cafe-central","category":"cafe"}`)
+	req := httptest.NewRequest(http.MethodPost, "/establishments", body)
+	req = req.WithContext(auth.WithUserID(req.Context(), "11111111-1111-4111-8111-111111111111"))
+	rec := httptest.NewRecorder()
+
+	err := handler.CreateEstablishment(rec, req)
+
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	var resp EstablishmentResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, establishment.ID, resp.ID)
+	assert.Equal(t, establishment.Name, resp.Name)
 }
 
 func withRouteParam(req *http.Request, key, value string) *http.Request {

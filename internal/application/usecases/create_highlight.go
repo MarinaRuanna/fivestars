@@ -51,7 +51,7 @@ func (uc *createHighlightUseCase) Execute(ctx context.Context, userID, establish
 		return nil, fmt.Errorf("failed to authorize establishment operator: %w", err)
 	}
 	if !allowed {
-		return nil, customerror.NewUnauthorizedError("user cannot manage this establishment")
+		return nil, customerror.NewForbiddenError("user cannot manage this establishment")
 	}
 
 	review, err := uc.reviewRepo.GetByID(ctx, reviewID)

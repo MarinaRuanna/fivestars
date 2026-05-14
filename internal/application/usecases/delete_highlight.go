@@ -44,7 +44,7 @@ func (uc *deleteHighlightUseCase) Execute(ctx context.Context, userID, establish
 		return fmt.Errorf("failed to authorize establishment operator: %w", err)
 	}
 	if !allowed {
-		return customerror.NewUnauthorizedError("user cannot manage this establishment")
+		return customerror.NewForbiddenError("user cannot manage this establishment")
 	}
 
 	if err := uc.highlightRepo.Delete(ctx, establishmentID, reviewID); err != nil {

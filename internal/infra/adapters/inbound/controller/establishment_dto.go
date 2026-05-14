@@ -40,6 +40,16 @@ type CreateHighlightRequest struct {
 	ReviewID string `json:"review_id" validate:"required,uuid4"`
 }
 
+type CreateEstablishmentRequest struct {
+	Name     string   `json:"name" validate:"required"`
+	Slug     string   `json:"slug" validate:"required"`
+	Category string   `json:"category" validate:"required"`
+	Address  string   `json:"address,omitempty"`
+	Lat      *float64 `json:"lat,omitempty"`
+	Lng      *float64 `json:"lng,omitempty"`
+	QRCode   string   `json:"qr_code,omitempty"`
+}
+
 type HighlightResponse struct {
 	EstablishmentID string `json:"establishment_id"`
 	ReviewID        string `json:"review_id"`
@@ -55,6 +65,14 @@ type EstablishmentStatsResponse struct {
 }
 
 func (r *CreateHighlightRequest) Validate() error {
+	if err := validator.Validate(r); err != nil {
+		return customerror.NewValidationError(err.Error())
+	}
+
+	return nil
+}
+
+func (r *CreateEstablishmentRequest) Validate() error {
 	if err := validator.Validate(r); err != nil {
 		return customerror.NewValidationError(err.Error())
 	}
@@ -114,5 +132,18 @@ func EstablishmentDetailFromDomain(detail *domain.EstablishmentDetail) Establish
 		CreatedAt:  detail.Establishment.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:  detail.Establishment.UpdatedAt.UTC().Format(time.RFC3339),
 		Highlights: ReviewsFromDomain(detail.Highlights),
+	}
+}
+
+func ToDomainEstablishment(req CreateEstablishmentRequest, userID string) domain.Establishment {
+	return domain.Establishment{
+		OwnerID:  userID,
+		Name:     req.Name,
+		Slug:     req.Slug,
+		Category: req.Category,
+		Address:  req.Address,
+		Lat:      req.Lat,
+		Lng:      req.Lng,
+		QRCode:   req.QRCode,
 	}
 }

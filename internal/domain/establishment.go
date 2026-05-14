@@ -9,6 +9,7 @@ import (
 
 //go:generate go run go.uber.org/mock/mockgen -destination mock_domain/establishment_repository.go -package mock_domain . EstablishmentRepository
 type EstablishmentRepository interface {
+	Create(ctx context.Context, establishment *Establishment) error
 	List(ctx context.Context) ([]Establishment, error)
 	GetByID(ctx context.Context, id string) (*Establishment, error)
 	GetStats(ctx context.Context, id string) (*EstablishmentStats, error)
@@ -16,7 +17,7 @@ type EstablishmentRepository interface {
 }
 
 type Establishment struct {
-	ID        string `validate:"required"`
+	ID        string `validate:"omitempty,uuid4"`
 	OwnerID   string `validate:"omitempty,uuid4"`
 	Name      string `validate:"required"`
 	Slug      string
@@ -34,4 +35,13 @@ func (e *Establishment) Validate() error {
 		return customerror.NewValidationError(err.Error())
 	}
 	return nil
+}
+
+func NewEstablishment(input Establishment) (*Establishment, error) {
+	establishment := input
+	if err := establishment.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &establishment, nil
 }

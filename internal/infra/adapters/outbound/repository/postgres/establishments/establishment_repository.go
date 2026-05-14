@@ -17,6 +17,24 @@ func NewEstablishmentRepository(pool *pgxpool.Pool) domain.EstablishmentReposito
 	return &establishmentRepository{pool: pool}
 }
 
+func (r *establishmentRepository) Create(ctx context.Context, establishment *domain.Establishment) error {
+	dto, err := FromDomain(establishment)
+	if err != nil {
+		return err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		INSERT INTO establishments (owner_id, name, slug, category, address, lat, lng, qr_code)
+		VALUES (NULLIF($1, '')::uuid, $2, $3, $4, NULLIF($5, ''), $6, $7, NULLIF($8, ''))
+		RETURNING id, created_at, updated_at
+	`, dto.OwnerID, dto.Name, dto.Slug, dto.Category, dto.Address, dto.Lat, dto.Lng, dto.QRCode).Scan(&establishment.ID, &establishment.CreatedAt, &establishment.UpdatedAt)
+	if err != nil {
+		return postgres.MapError(err, "establishment")
+	}
+
+	return nil
+}
+
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,

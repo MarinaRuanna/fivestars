@@ -64,6 +64,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
 	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
 	getUserUC := usecases.NewGetUserUseCase(userRepo)
+	createEstablishmentUC := usecases.NewCreateEstablishmentUseCase(estabRepo)
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
 	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)
@@ -82,7 +83,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsHandler(getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
+	estabHandler := controller.NewEstablishmentsHandler(createEstablishmentUC, getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
 	checkinsHandler := controller.NewCheckinsHandler(createCheckinUC, listCheckinsUC)
 	reviewsHandler := controller.NewReviewsHandler(createReviewUC, getReviewUC, listReviewsUC, likeReviewUC, unlikeReviewUC)
 

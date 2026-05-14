@@ -41,6 +41,20 @@ func (m *MockEstablishmentRepository) EXPECT() *MockEstablishmentRepositoryMockR
 	return m.recorder
 }
 
+// Create mocks base method.
+func (m *MockEstablishmentRepository) Create(ctx context.Context, establishment *domain.Establishment) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, establishment)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockEstablishmentRepositoryMockRecorder) Create(ctx, establishment any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockEstablishmentRepository)(nil).Create), ctx, establishment)
+}
+
 // DistanceTo mocks base method.
 func (m *MockEstablishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {
 	m.ctrl.T.Helper()

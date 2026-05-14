@@ -40,7 +40,7 @@ func Test_DeleteHighlightUseCase_Execute(t *testing.T) {
 
 		err := uc.Execute(ctx, review.UserID, review.EstablishmentID, review.ID)
 
-		requireCustomErrorType(t, err, customerror.UnauthorizedErrorType)
+		requireCustomErrorType(t, err, customerror.ForbiddenErrorType)
 	})
 
 	t.Run("should return validation error when establishmentID is empty", func(t *testing.T) {

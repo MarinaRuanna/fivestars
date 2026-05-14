@@ -27,6 +27,28 @@ type EstablishmentStatsDTO struct {
 	HighlightedReviewCount int     `json:"highlighted_review_count"`
 }
 
+func FromDomain(establishment *domain.Establishment) (*EstablishmentDTO, error) {
+	if err := establishment.Validate(); err != nil {
+		return nil, err
+	}
+
+	dto := &EstablishmentDTO{
+		ID:        establishment.ID,
+		OwnerID:   establishment.OwnerID,
+		Name:      establishment.Name,
+		Slug:      establishment.Slug,
+		Category:  establishment.Category,
+		Address:   establishment.Address,
+		Lat:       establishment.Lat,
+		Lng:       establishment.Lng,
+		QRCode:    establishment.QRCode,
+		CreatedAt: establishment.CreatedAt,
+		UpdatedAt: establishment.UpdatedAt,
+	}
+
+	return dto, nil
+}
+
 func (r *EstablishmentDTO) ToDomain() (*domain.Establishment, error) {
 	estab := &domain.Establishment{
 		ID:        r.ID,

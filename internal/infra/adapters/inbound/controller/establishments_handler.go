@@ -11,8 +11,10 @@ import (
 )
 
 const highlightBodyMaxBytes int64 = 8 << 10 // 8KB
+const establishmentBodyMaxBytes int64 = 32 << 10
 
 type EstablishmentsHandler struct {
+	createUC          usecases.CreateEstablishmentUseCase
 	getDetailUC       usecases.GetEstablishmentDetailUseCase
 	listUC            usecases.ListEstablishmentsUseCase
 	statsUC           usecases.GetEstablishmentStatsUseCase
@@ -21,6 +23,7 @@ type EstablishmentsHandler struct {
 }
 
 func NewEstablishmentsHandler(
+	createUC usecases.CreateEstablishmentUseCase,
 	getDetailUC usecases.GetEstablishmentDetailUseCase,
 	listUC usecases.ListEstablishmentsUseCase,
 	statsUC usecases.GetEstablishmentStatsUseCase,
@@ -28,12 +31,43 @@ func NewEstablishmentsHandler(
 	deleteHighlightUC usecases.DeleteHighlightUseCase,
 ) *EstablishmentsHandler {
 	return &EstablishmentsHandler{
+		createUC:          createUC,
 		getDetailUC:       getDetailUC,
 		listUC:            listUC,
 		statsUC:           statsUC,
 		createHighlightUC: createHighlightUC,
 		deleteHighlightUC: deleteHighlightUC,
 	}
+}
+
+func (c *EstablishmentsHandler) CreateEstablishment(w http.ResponseWriter, r *http.Request) error {
+	userID := auth.UserIDFromContext(r.Context())
+	if userID == "" {
+		return customerror.NewUnauthorizedError("user not authenticated")
+	}
+
+	var req CreateEstablishmentRequest
+	if err := decodeStrictJSONBody(w, r, &req, establishmentBodyMaxBytes); err != nil {
+		return err
+	}
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	establishment, err := c.createUC.Execute(r.Context(), userID, ToDomainEstablishment(req, userID))
+	if err != nil {
+		return err
+	}
+
+	resp := FromDomain(establishment)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *EstablishmentsHandler) GetEstablishment(w http.ResponseWriter, r *http.Request) error {

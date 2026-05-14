@@ -62,7 +62,7 @@ func Test_CreateHighlightUseCase_Execute(t *testing.T) {
 		result, err := uc.Execute(ctx, review.UserID, review.EstablishmentID, review.ID)
 
 		require.Nil(t, result)
-		requireCustomErrorType(t, err, customerror.UnauthorizedErrorType)
+		requireCustomErrorType(t, err, customerror.ForbiddenErrorType)
 	})
 
 	t.Run("should return not found when review does not exist", func(t *testing.T) {
