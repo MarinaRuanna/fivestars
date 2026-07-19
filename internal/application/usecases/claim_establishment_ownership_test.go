@@ -9,6 +9,7 @@ import (
 	"fivestars/internal/domain/customerror"
 	"fivestars/internal/domain/domain_fakes"
 	"fivestars/internal/domain/mock_domain"
+	"fivestars/internal/infra/security"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,18 +18,19 @@ import (
 
 func Test_ClaimEstablishmentOwnershipUseCase_Execute(t *testing.T) {
 	ctx := context.Background()
+	hasher := security.NewHMACClaimCodeHasher("test-claim-secret")
 
 	t.Run("should claim establishment successfully", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
 		establishment := domain_fakes.NewEstablishmentBuilder().WithOwnerID("11111111-1111-4111-8111-111111111111").Build()
 		establishmentRepo.EXPECT().
-			ClaimOwnership(ctx, establishment.ID, "11111111-1111-4111-8111-111111111111", "qr-cafe-central").
+			ClaimOwnership(ctx, establishment.ID, "11111111-1111-4111-8111-111111111111", hasher.Hash("CLAIM-123")).
 			Return(&establishment, nil)
 
-		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", establishment.ID, "qr-cafe-central")
+		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", establishment.ID, "CLAIM-123")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -38,9 +40,9 @@ func Test_ClaimEstablishmentOwnershipUseCase_Execute(t *testing.T) {
 	t.Run("should return unauthorized when userID is empty", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
-		result, err := uc.Execute(ctx, "", "22222222-2222-4222-8222-222222222222", "qr-cafe-central")
+		result, err := uc.Execute(ctx, "", "22222222-2222-4222-8222-222222222222", "CLAIM-123")
 
 		require.Nil(t, result)
 		requireCustomErrorType(t, err, customerror.UnauthorizedErrorType)
@@ -49,18 +51,18 @@ func Test_ClaimEstablishmentOwnershipUseCase_Execute(t *testing.T) {
 	t.Run("should return validation error when establishmentID is empty", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
-		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "", "qr-cafe-central")
+		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "", "CLAIM-123")
 
 		require.Nil(t, result)
 		requireCustomErrorType(t, err, customerror.ValidationErrorType)
 	})
 
-	t.Run("should return validation error when qr_code is empty", func(t *testing.T) {
+	t.Run("should return validation error when claim_code is empty", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
 		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "")
 
@@ -71,13 +73,13 @@ func Test_ClaimEstablishmentOwnershipUseCase_Execute(t *testing.T) {
 	t.Run("should return not found when establishment does not exist", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
 		establishmentRepo.EXPECT().
-			ClaimOwnership(ctx, "22222222-2222-4222-8222-222222222222", "11111111-1111-4111-8111-111111111111", "qr-cafe-central").
+			ClaimOwnership(ctx, "22222222-2222-4222-8222-222222222222", "11111111-1111-4111-8111-111111111111", hasher.Hash("CLAIM-123")).
 			Return(nil, nil)
 
-		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "qr-cafe-central")
+		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "CLAIM-123")
 
 		require.Nil(t, result)
 		requireCustomErrorType(t, err, customerror.NotFoundErrorType)
@@ -86,14 +88,14 @@ func Test_ClaimEstablishmentOwnershipUseCase_Execute(t *testing.T) {
 	t.Run("should return wrapped error when repository fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		establishmentRepo := mock_domain.NewMockEstablishmentRepository(ctrl)
-		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo)
+		uc := usecases.NewClaimEstablishmentOwnershipUseCase(establishmentRepo, hasher)
 
 		repoErr := errors.New("claim failed")
 		establishmentRepo.EXPECT().
-			ClaimOwnership(ctx, "22222222-2222-4222-8222-222222222222", "11111111-1111-4111-8111-111111111111", "qr-cafe-central").
+			ClaimOwnership(ctx, "22222222-2222-4222-8222-222222222222", "11111111-1111-4111-8111-111111111111", hasher.Hash("CLAIM-123")).
 			Return(nil, repoErr)
 
-		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "qr-cafe-central")
+		result, err := uc.Execute(ctx, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "CLAIM-123")
 
 		require.Nil(t, result)
 		require.Error(t, err)

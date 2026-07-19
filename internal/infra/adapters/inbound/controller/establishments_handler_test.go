@@ -41,7 +41,7 @@ type stubClaimEstablishmentOwnershipUseCase struct {
 	err    error
 }
 
-func (s stubClaimEstablishmentOwnershipUseCase) Execute(ctx context.Context, userID, establishmentID, claimQRCode string) (*domain.Establishment, error) {
+func (s stubClaimEstablishmentOwnershipUseCase) Execute(ctx context.Context, userID, establishmentID, claimCode string) (*domain.Establishment, error) {
 	return s.result, s.err
 }
 
@@ -297,7 +297,7 @@ func TestEstablishmentsHandler_ClaimOwnership(t *testing.T) {
 		stubDeleteHighlightUseCase{},
 	)
 
-	req := httptest.NewRequest(http.MethodPost, "/establishments/222/claim", bytes.NewBufferString(`{"qr_code":"qr-cafe-central"}`))
+	req := httptest.NewRequest(http.MethodPost, "/establishments/222/claim", bytes.NewBufferString(`{"claim_code":"CLAIM-123"}`))
 	req = req.WithContext(auth.WithUserID(req.Context(), "11111111-1111-4111-8111-111111111111"))
 	req = withRouteParam(req, "id", establishment.ID)
 	rec := httptest.NewRecorder()

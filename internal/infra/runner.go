@@ -19,6 +19,7 @@ import (
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/users"
 	"fivestars/internal/infra/config"
 	"fivestars/internal/infra/policy"
+	"fivestars/internal/infra/security"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,13 +60,18 @@ func BuildApp(ctx context.Context) (*App, error) {
 	reviewRepo := reviews.NewReviewRepository(pool)
 	reviewLikeRepo := reviewlikes.NewReviewLikeRepository(pool)
 	highlightRepo := highlights.NewHighlightRepository(pool)
+	claimSecret := cfg.ClaimCode.Secret
+	if claimSecret == "" {
+		claimSecret = cfg.JWTSecret.Secret
+	}
+	claimCodeHasher := security.NewHMACClaimCodeHasher(claimSecret)
 
 	// ====== 4. USECASES ======
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
 	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
 	getUserUC := usecases.NewGetUserUseCase(userRepo)
 	createEstablishmentUC := usecases.NewCreateEstablishmentUseCase(estabRepo)
-	claimEstablishmentOwnershipUC := usecases.NewClaimEstablishmentOwnershipUseCase(estabRepo)
+	claimEstablishmentOwnershipUC := usecases.NewClaimEstablishmentOwnershipUseCase(estabRepo, claimCodeHasher)
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
 	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)

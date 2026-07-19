@@ -51,7 +51,7 @@ type CreateEstablishmentRequest struct {
 }
 
 type ClaimEstablishmentOwnershipRequest struct {
-	QRCode string `json:"qr_code" validate:"required"`
+	ClaimCode string `json:"claim_code" validate:"required"`
 }
 
 type ClaimEstablishmentOwnershipResponse struct {

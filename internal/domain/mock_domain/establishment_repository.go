@@ -56,18 +56,18 @@ func (mr *MockEstablishmentRepositoryMockRecorder) Create(ctx, establishment any
 }
 
 // ClaimOwnership mocks base method.
-func (m *MockEstablishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimQRCode string) (*domain.Establishment, error) {
+func (m *MockEstablishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimCodeHash string) (*domain.Establishment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClaimOwnership", ctx, establishmentID, ownerID, claimQRCode)
+	ret := m.ctrl.Call(m, "ClaimOwnership", ctx, establishmentID, ownerID, claimCodeHash)
 	ret0, _ := ret[0].(*domain.Establishment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ClaimOwnership indicates an expected call of ClaimOwnership.
-func (mr *MockEstablishmentRepositoryMockRecorder) ClaimOwnership(ctx, establishmentID, ownerID, claimQRCode any) *gomock.Call {
+func (mr *MockEstablishmentRepositoryMockRecorder) ClaimOwnership(ctx, establishmentID, ownerID, claimCodeHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimOwnership", reflect.TypeOf((*MockEstablishmentRepository)(nil).ClaimOwnership), ctx, establishmentID, ownerID, claimQRCode)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimOwnership", reflect.TypeOf((*MockEstablishmentRepository)(nil).ClaimOwnership), ctx, establishmentID, ownerID, claimCodeHash)
 }
 
 // DistanceTo mocks base method.

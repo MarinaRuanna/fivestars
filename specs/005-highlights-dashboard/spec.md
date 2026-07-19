@@ -130,7 +130,7 @@ Request:
 
 ```json
 {
-  "qr_code": "secret"
+  "claim_code": "FS-7K2P9Q"
 }
 ```
 
@@ -145,9 +145,9 @@ Success response:
 
 Error cases:
 
-- `400` when `qr_code` is missing.
+- `400` when `claim_code` is missing.
 - `401` when the caller is not authenticated.
-- `403` when the provided `qr_code` does not prove possession of the establishment.
+- `403` when the provided `claim_code` is invalid, unavailable, or expired.
 - `404` when the establishment does not exist.
 - `409` when the establishment is already claimed by another user.
 

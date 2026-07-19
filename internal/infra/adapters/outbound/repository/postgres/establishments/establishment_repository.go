@@ -2,6 +2,7 @@ package establishments
 
 import (
 	"context"
+	"time"
 
 	"fivestars/internal/domain"
 	"fivestars/internal/domain/customerror"
@@ -25,10 +26,15 @@ func (r *establishmentRepository) Create(ctx context.Context, establishment *dom
 	}
 
 	err = r.pool.QueryRow(ctx, `
-		INSERT INTO establishments (owner_id, name, slug, category, address, lat, lng, qr_code)
-		VALUES (NULLIF($1, '')::uuid, $2, $3, $4, NULLIF($5, ''), $6, $7, NULLIF($8, ''))
+		INSERT INTO establishments (
+			owner_id, name, slug, category, address, lat, lng, qr_code, claim_code_hash, claim_code_expires_at
+		)
+		VALUES (
+			NULLIF($1, '')::uuid, $2, $3, $4, NULLIF($5, ''), $6, $7, NULLIF($8, ''), NULLIF($9, ''), $10
+		)
 		RETURNING id, created_at, updated_at
-	`, dto.OwnerID, dto.Name, dto.Slug, dto.Category, dto.Address, dto.Lat, dto.Lng, dto.QRCode).Scan(&establishment.ID, &establishment.CreatedAt, &establishment.UpdatedAt)
+	`, dto.OwnerID, dto.Name, dto.Slug, dto.Category, dto.Address, dto.Lat, dto.Lng, dto.QRCode, dto.ClaimCodeHash, dto.ClaimCodeExpiresAt).
+		Scan(&establishment.ID, &establishment.CreatedAt, &establishment.UpdatedAt)
 	if err != nil {
 		return postgres.MapError(err, "establishment")
 	}
@@ -36,7 +42,7 @@ func (r *establishmentRepository) Create(ctx context.Context, establishment *dom
 	return nil
 }
 
-func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimQRCode string) (*domain.Establishment, error) {
+func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimCodeHash string) (*domain.Establishment, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, postgres.MapError(err, "establishment")
@@ -44,12 +50,14 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 	defer tx.Rollback(ctx)
 
 	row := tx.QueryRow(ctx, `
-		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
-		       COALESCE(address, '') as address,
-		       lat, lng,
-		       COALESCE(qr_code, '') as qr_code,
-		       created_at, updated_at
-		FROM establishments
+			SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+			       COALESCE(address, '') as address,
+			       lat, lng,
+			       COALESCE(qr_code, '') as qr_code,
+			       COALESCE(claim_code_hash, '') as claim_code_hash,
+			       claim_code_expires_at,
+			       created_at, updated_at
+			FROM establishments
 		WHERE id = $1
 		FOR UPDATE
 	`, establishmentID)
@@ -57,7 +65,7 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 	var dto EstablishmentDTO
 	if err := row.Scan(
 		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
-		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.CreatedAt, &dto.UpdatedAt,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.ClaimCodeHash, &dto.ClaimCodeExpiresAt, &dto.CreatedAt, &dto.UpdatedAt,
 	); err != nil {
 		if postgres.IsNoRows(err) {
 			return nil, nil
@@ -68,38 +76,35 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 	if dto.OwnerID != "" && dto.OwnerID != ownerID {
 		return nil, customerror.NewConflictError("establishment already claimed")
 	}
-	if dto.OwnerID == ownerID {
-		if dto.QRCode == "" || dto.QRCode != claimQRCode {
-			return nil, customerror.NewForbiddenError("invalid claim qr_code")
-		}
-		establishment, err := dto.ToDomain()
-		if err != nil {
-			return nil, err
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return nil, postgres.MapError(err, "establishment")
-		}
-		return establishment, nil
+	if dto.ClaimCodeHash == "" {
+		return nil, customerror.NewForbiddenError("claim code unavailable")
 	}
-	if dto.QRCode == "" || dto.QRCode != claimQRCode {
-		return nil, customerror.NewForbiddenError("invalid claim qr_code")
+	if dto.ClaimCodeExpiresAt != nil && dto.ClaimCodeExpiresAt.Before(time.Now().UTC()) {
+		return nil, customerror.NewForbiddenError("claim code expired")
+	}
+	if dto.ClaimCodeHash != claimCodeHash {
+		return nil, customerror.NewForbiddenError("invalid claim code")
 	}
 
 	row = tx.QueryRow(ctx, `
 		UPDATE establishments
 		SET owner_id = NULLIF($2, '')::uuid,
+		    claim_code_hash = NULL,
+		    claim_code_expires_at = NULL,
 		    updated_at = NOW()
-		WHERE id = $1 AND owner_id IS NULL
+		WHERE id = $1 AND (owner_id IS NULL OR owner_id = NULLIF($2, '')::uuid)
 		RETURNING id, COALESCE(owner_id::text, ''), name, slug, category,
 		          COALESCE(address, '') as address,
 		          lat, lng,
 		          COALESCE(qr_code, '') as qr_code,
+		          COALESCE(claim_code_hash, '') as claim_code_hash,
+		          claim_code_expires_at,
 		          created_at, updated_at
 	`, establishmentID, ownerID)
 
 	if err := row.Scan(
 		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
-		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.CreatedAt, &dto.UpdatedAt,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.ClaimCodeHash, &dto.ClaimCodeExpiresAt, &dto.CreatedAt, &dto.UpdatedAt,
 	); err != nil {
 		if postgres.IsNoRows(err) {
 			return nil, customerror.NewConflictError("establishment already claimed")
@@ -120,12 +125,14 @@ func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishm
 
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
-		       COALESCE(address, '') as address,
-		       lat, lng,
-		       COALESCE(qr_code, '') as qr_code,
-		       created_at, updated_at
-		FROM establishments
+			SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+			       COALESCE(address, '') as address,
+			       lat, lng,
+			       COALESCE(qr_code, '') as qr_code,
+			       COALESCE(claim_code_hash, '') as claim_code_hash,
+			       claim_code_expires_at,
+			       created_at, updated_at
+			FROM establishments
 		ORDER BY name
 	`)
 	if err != nil {
@@ -138,7 +145,7 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 		var estabDTO EstablishmentDTO
 		err := rows.Scan(
 			&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
-			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
+			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.ClaimCodeHash, &estabDTO.ClaimCodeExpiresAt, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 		)
 		if err != nil {
 			return nil, postgres.MapError(err, "establishment")
@@ -162,6 +169,8 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 		       COALESCE(address, '') as address,
 		       lat, lng,
 		       COALESCE(qr_code, '') as qr_code,
+		       COALESCE(claim_code_hash, '') as claim_code_hash,
+		       claim_code_expires_at,
 		       created_at, updated_at
 		FROM establishments
 		WHERE id = $1
@@ -170,7 +179,7 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 	var estabDTO EstablishmentDTO
 	if err := row.Scan(
 		&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
-		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
+		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.ClaimCodeHash, &estabDTO.ClaimCodeExpiresAt, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 	); err != nil {
 		if postgres.IsNoRows(err) {
 			return nil, nil

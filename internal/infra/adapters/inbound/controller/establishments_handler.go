@@ -88,7 +88,7 @@ func (c *EstablishmentsHandler) ClaimOwnership(w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	establishment, err := c.claimOwnershipUC.Execute(r.Context(), userID, establishmentID, req.QRCode)
+	establishment, err := c.claimOwnershipUC.Execute(r.Context(), userID, establishmentID, req.ClaimCode)
 	if err != nil {
 		return err
 	}

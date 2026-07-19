@@ -97,9 +97,20 @@ Current decision:
   highlights
 - highlight management still depends on an establishment-operator policy
   interface injected into the use cases
-- ownership claim requires proof of possession via the establishment `qr_code`
+- ownership claim requires a dedicated administrative `claim_code`
 - preexisting establishments can be adopted through
   `POST /establishments/:id/claim`, avoiding mandatory manual backfill
+
+Recommended fields:
+
+- `claim_code_hash`
+- `claim_code_expires_at`
+
+Rules:
+
+- the claim code must be verified against a stored hash
+- the claim code should be invalidated after successful use
+- expired claim codes must fail with `403`
 
 Preferred long-term model:
 
