@@ -2,8 +2,10 @@ package establishments
 
 import (
 	"context"
+	"time"
 
 	"fivestars/internal/domain"
+	"fivestars/internal/domain/customerror"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,10 +19,120 @@ func NewEstablishmentRepository(pool *pgxpool.Pool) domain.EstablishmentReposito
 	return &establishmentRepository{pool: pool}
 }
 
+func (r *establishmentRepository) Create(ctx context.Context, establishment *domain.Establishment) error {
+	dto, err := FromDomain(establishment)
+	if err != nil {
+		return err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		INSERT INTO establishments (
+			owner_id, name, slug, category, address, lat, lng, qr_code, claim_code_hash, claim_code_expires_at
+		)
+		VALUES (
+			NULLIF($1, '')::uuid, $2, $3, $4, NULLIF($5, ''), $6, $7, NULLIF($8, ''), NULLIF($9, ''), $10
+		)
+		RETURNING id, created_at, updated_at
+	`, dto.OwnerID, dto.Name, dto.Slug, dto.Category, dto.Address, dto.Lat, dto.Lng, dto.QRCode, dto.ClaimCodeHash, dto.ClaimCodeExpiresAt).
+		Scan(&establishment.ID, &establishment.CreatedAt, &establishment.UpdatedAt)
+	if err != nil {
+		return postgres.MapError(err, "establishment")
+	}
+
+	return nil
+}
+
+func (r *establishmentRepository) ClaimOwnership(ctx context.Context, establishmentID, ownerID, claimCodeHash string) (*domain.Establishment, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, postgres.MapError(err, "establishment")
+	}
+	defer tx.Rollback(ctx)
+
+	row := tx.QueryRow(ctx, `
+			SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+			       COALESCE(address, '') as address,
+			       lat, lng,
+			       COALESCE(qr_code, '') as qr_code,
+			       COALESCE(claim_code_hash, '') as claim_code_hash,
+			       claim_code_expires_at,
+			       created_at, updated_at
+			FROM establishments
+		WHERE id = $1
+		FOR UPDATE
+	`, establishmentID)
+
+	var dto EstablishmentDTO
+	if err := row.Scan(
+		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.ClaimCodeHash, &dto.ClaimCodeExpiresAt, &dto.CreatedAt, &dto.UpdatedAt,
+	); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	if dto.OwnerID != "" && dto.OwnerID != ownerID {
+		return nil, customerror.NewConflictError("establishment already claimed")
+	}
+	if dto.ClaimCodeHash == "" {
+		return nil, customerror.NewForbiddenError("claim code unavailable")
+	}
+	if dto.ClaimCodeExpiresAt != nil && dto.ClaimCodeExpiresAt.Before(time.Now().UTC()) {
+		return nil, customerror.NewForbiddenError("claim code expired")
+	}
+	if dto.ClaimCodeHash != claimCodeHash {
+		return nil, customerror.NewForbiddenError("invalid claim code")
+	}
+
+	row = tx.QueryRow(ctx, `
+		UPDATE establishments
+		SET owner_id = NULLIF($2, '')::uuid,
+		    claim_code_hash = NULL,
+		    claim_code_expires_at = NULL,
+		    updated_at = NOW()
+		WHERE id = $1 AND (owner_id IS NULL OR owner_id = NULLIF($2, '')::uuid)
+		RETURNING id, COALESCE(owner_id::text, ''), name, slug, category,
+		          COALESCE(address, '') as address,
+		          lat, lng,
+		          COALESCE(qr_code, '') as qr_code,
+		          COALESCE(claim_code_hash, '') as claim_code_hash,
+		          claim_code_expires_at,
+		          created_at, updated_at
+	`, establishmentID, ownerID)
+
+	if err := row.Scan(
+		&dto.ID, &dto.OwnerID, &dto.Name, &dto.Slug, &dto.Category, &dto.Address,
+		&dto.Lat, &dto.Lng, &dto.QRCode, &dto.ClaimCodeHash, &dto.ClaimCodeExpiresAt, &dto.CreatedAt, &dto.UpdatedAt,
+	); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, customerror.NewConflictError("establishment already claimed")
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	establishment, err := dto.ToDomain()
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	return establishment, nil
+}
+
 func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishment, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, slug, category, address, lat, lng, qr_code, created_at, updated_at
-		FROM establishments
+			SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+			       COALESCE(address, '') as address,
+			       lat, lng,
+			       COALESCE(qr_code, '') as qr_code,
+			       COALESCE(claim_code_hash, '') as claim_code_hash,
+			       claim_code_expires_at,
+			       created_at, updated_at
+			FROM establishments
 		ORDER BY name
 	`)
 	if err != nil {
@@ -32,8 +144,8 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 	for rows.Next() {
 		var estabDTO EstablishmentDTO
 		err := rows.Scan(
-			&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
-			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
+			&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+			&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.ClaimCodeHash, &estabDTO.ClaimCodeExpiresAt, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 		)
 		if err != nil {
 			return nil, postgres.MapError(err, "establishment")
@@ -53,15 +165,21 @@ func (r *establishmentRepository) List(ctx context.Context) ([]domain.Establishm
 
 func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID string) (*domain.Establishment, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, name, slug, category, address, lat, lng, qr_code, created_at, updated_at
+		SELECT id, COALESCE(owner_id::text, ''), name, slug, category,
+		       COALESCE(address, '') as address,
+		       lat, lng,
+		       COALESCE(qr_code, '') as qr_code,
+		       COALESCE(claim_code_hash, '') as claim_code_hash,
+		       claim_code_expires_at,
+		       created_at, updated_at
 		FROM establishments
 		WHERE id = $1
 	`, establishmentID)
 
 	var estabDTO EstablishmentDTO
 	if err := row.Scan(
-		&estabDTO.ID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
-		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
+		&estabDTO.ID, &estabDTO.OwnerID, &estabDTO.Name, &estabDTO.Slug, &estabDTO.Category, &estabDTO.Address,
+		&estabDTO.Lat, &estabDTO.Lng, &estabDTO.QRCode, &estabDTO.ClaimCodeHash, &estabDTO.ClaimCodeExpiresAt, &estabDTO.CreatedAt, &estabDTO.UpdatedAt,
 	); err != nil {
 		if postgres.IsNoRows(err) {
 			return nil, nil
@@ -74,6 +192,44 @@ func (r *establishmentRepository) GetByID(ctx context.Context, establishmentID s
 		return nil, err
 	}
 	return estab, nil
+}
+
+func (r *establishmentRepository) GetStats(ctx context.Context, establishmentID string) (*domain.EstablishmentStats, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(review_stats.average_rating, 0),
+			COALESCE(review_stats.total_reviews, 0),
+			COALESCE(like_stats.total_likes, 0),
+			COALESCE(highlight_stats.highlighted_review_count, 0)
+		FROM establishments e
+		LEFT JOIN (
+			SELECT establishment_id, AVG(rating)::float8 AS average_rating, COUNT(*) AS total_reviews
+			FROM reviews
+			GROUP BY establishment_id
+		) review_stats ON review_stats.establishment_id = e.id
+		LEFT JOIN (
+			SELECT r.establishment_id, COUNT(*) AS total_likes
+			FROM reviews r
+			JOIN review_likes rl ON rl.review_id = r.id
+			GROUP BY r.establishment_id
+		) like_stats ON like_stats.establishment_id = e.id
+		LEFT JOIN (
+			SELECT establishment_id, COUNT(*) AS highlighted_review_count
+			FROM highlights
+			GROUP BY establishment_id
+		) highlight_stats ON highlight_stats.establishment_id = e.id
+		WHERE e.id = $1
+	`, establishmentID)
+
+	var dto EstablishmentStatsDTO
+	if err := row.Scan(&dto.AverageRating, &dto.TotalReviews, &dto.TotalLikes, &dto.HighlightedReviewCount); err != nil {
+		if postgres.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, postgres.MapError(err, "establishment")
+	}
+
+	return dto.ToDomain()
 }
 
 func (r *establishmentRepository) DistanceTo(ctx context.Context, id string, lat, lng float64) (float64, error) {

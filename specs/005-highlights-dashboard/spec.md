@@ -57,6 +57,18 @@ execution plan without a delivery path.
 - Stats must reflect all reviews for the establishment, not only highlighted
   reviews.
 
+## Authorization Decision
+
+- Highlight management depends on an explicit authorization policy interface in
+  the use case layer.
+- The first concrete rule is ownership-based: only the authenticated
+  `owner_id` of the establishment may create or remove highlights.
+- To support preexisting establishments created before `owner_id` existed, the
+  API exposes an ownership-claim endpoint so the operator path does not depend
+  on manual database backfill.
+- This keeps the endpoint contracts stable while preserving room to evolve
+  later to `establishment_users`.
+
 ## API Contract
 
 ### Create Highlight
@@ -106,7 +118,38 @@ Error cases:
 
 - `401` when the caller is not authenticated.
 - `403` when the caller is not allowed to manage the establishment.
-- `404` when the highlight does not exist.
+- `404` when the establishment or highlight does not exist.
+
+### Claim Establishment Ownership
+
+- Method: `POST`
+- Path: `/establishments/:id/claim`
+- Auth: `authenticated user`
+
+Request:
+
+```json
+{
+  "claim_code": "FS-7K2P9Q"
+}
+```
+
+Success response:
+
+```json
+{
+  "establishment_id": "uuid",
+  "owner_id": "uuid"
+}
+```
+
+Error cases:
+
+- `400` when `claim_code` is missing.
+- `401` when the caller is not authenticated.
+- `403` when the provided `claim_code` is invalid, unavailable, or expired.
+- `404` when the establishment does not exist.
+- `409` when the establishment is already claimed by another user.
 
 ### Get Establishment Stats
 
@@ -175,8 +218,6 @@ Error cases:
 
 ## Open Questions
 
-- What is the first MVP rule for establishment operator authorization:
-  hardcoded ownership, role-based auth, or an `establishment_users` table?
 - Should stats remain public, or should they require operator auth from day one?
 - Should highlighted reviews be limited to positive ratings only, or can any
   valid review be highlighted in MVP?

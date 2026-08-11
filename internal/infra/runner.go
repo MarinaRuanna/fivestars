@@ -13,8 +13,13 @@ import (
 	"fivestars/internal/infra/adapters/outbound/repository/postgres"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/checkins"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/establishments"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/highlights"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/reviewlikes"
+	"fivestars/internal/infra/adapters/outbound/repository/postgres/reviews"
 	"fivestars/internal/infra/adapters/outbound/repository/postgres/users"
 	"fivestars/internal/infra/config"
+	"fivestars/internal/infra/policy"
+	"fivestars/internal/infra/security"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -52,21 +57,42 @@ func BuildApp(ctx context.Context) (*App, error) {
 	userRepo := users.NewUserRepository(pool)
 	estabRepo := establishments.NewEstablishmentRepository(pool)
 	checkinRepo := checkins.NewCheckinRepository(pool)
+	reviewRepo := reviews.NewReviewRepository(pool)
+	reviewLikeRepo := reviewlikes.NewReviewLikeRepository(pool)
+	highlightRepo := highlights.NewHighlightRepository(pool)
+	claimSecret := cfg.ClaimCode.Secret
+	if claimSecret == "" {
+		claimSecret = cfg.JWTSecret.Secret
+	}
+	claimCodeHasher := security.NewHMACClaimCodeHasher(claimSecret)
 
 	// ====== 4. USECASES ======
 	registerUserUC := usecases.NewRegisterUserUseCase(userRepo, cfg.JWTSecret)
 	loginUserUC := usecases.NewLoginUserUseCase(userRepo, cfg.JWTSecret)
 	getUserUC := usecases.NewGetUserUseCase(userRepo)
+	createEstablishmentUC := usecases.NewCreateEstablishmentUseCase(estabRepo)
+	claimEstablishmentOwnershipUC := usecases.NewClaimEstablishmentOwnershipUseCase(estabRepo, claimCodeHasher)
 	listEstabUC := usecases.NewListEstablishmentsUseCase(estabRepo)
 	createCheckinUC := usecases.NewCreateCheckinUseCase(checkinRepo, estabRepo, 100.0)
 	listCheckinsUC := usecases.NewListCheckinsUseCase(checkinRepo)
+	getEstablishmentDetailUC := usecases.NewGetEstablishmentDetailUseCase(estabRepo, highlightRepo, reviewRepo)
+	createReviewUC := usecases.NewCreateReviewUseCase(reviewRepo, checkinRepo)
+	getReviewUC := usecases.NewGetReviewUseCase(reviewRepo)
+	listReviewsUC := usecases.NewListReviewsByEstablishmentUseCase(reviewRepo)
+	likeReviewUC := usecases.NewLikeReviewUseCase(reviewRepo, reviewLikeRepo)
+	unlikeReviewUC := usecases.NewUnlikeReviewUseCase(reviewLikeRepo)
+	operatorPolicy := policy.NewEstablishmentOwnerOperator(estabRepo)
+	createHighlightUC := usecases.NewCreateHighlightUseCase(highlightRepo, reviewRepo, estabRepo, operatorPolicy)
+	deleteHighlightUC := usecases.NewDeleteHighlightUseCase(highlightRepo, estabRepo, operatorPolicy)
+	getEstablishmentStatsUC := usecases.NewGetEstablishmentStatsUseCase(estabRepo)
 
 	// ====== 5. HANDLERS ======
 	healthHandler := controller.NewHealthHandler(pool)
 	authHandler := controller.NewAuthHandler(registerUserUC, loginUserUC)
 	userHandler := controller.NewUserHandler(getUserUC)
-	estabHandler := controller.NewEstablishmentsHandler(listEstabUC)
+	estabHandler := controller.NewEstablishmentsHandler(createEstablishmentUC, claimEstablishmentOwnershipUC, getEstablishmentDetailUC, listEstabUC, getEstablishmentStatsUC, createHighlightUC, deleteHighlightUC)
 	checkinsHandler := controller.NewCheckinsHandler(createCheckinUC, listCheckinsUC)
+	reviewsHandler := controller.NewReviewsHandler(createReviewUC, getReviewUC, listReviewsUC, likeReviewUC, unlikeReviewUC)
 
 	// ====== 6. ROUTES ======
 	controllers := inbound.Handlers{
@@ -75,6 +101,7 @@ func BuildApp(ctx context.Context) (*App, error) {
 		User:           userHandler,
 		Establishments: estabHandler,
 		Checkins:       checkinsHandler,
+		Reviews:        reviewsHandler,
 	}
 
 	router := inbound.CreateChiRoutes(controllers, cfg.JWTSecret.Secret, cfg.CORS.AllowedOrigins)

@@ -8,10 +8,11 @@ import (
 
 // Config holds application configuration from environment.
 type Config struct {
-	AppPort          int            `envconfig:"appPort" required:"true" default:"8080"`
-	DatabasePostgres PostgresConfig `envconfig:"postgres" required:"true"`
-	JWTSecret        JWTConfig      `envconfig:"jwt" required:"true"`
-	CORS             CORSConfig     `envconfig:"cors"`
+	AppPort          int             `envconfig:"appPort" required:"true" default:"8080"`
+	DatabasePostgres PostgresConfig  `envconfig:"postgres" required:"true"`
+	JWTSecret        JWTConfig       `envconfig:"jwt" required:"true"`
+	ClaimCode        ClaimCodeConfig `envconfig:"claimCode"`
+	CORS             CORSConfig      `envconfig:"cors"`
 }
 
 type PostgresConfig struct {
@@ -27,6 +28,10 @@ type PostgresConfig struct {
 
 type JWTConfig struct {
 	Secret string `envconfig:"secret" required:"true"`
+}
+
+type ClaimCodeConfig struct {
+	Secret string `envconfig:"secret"`
 }
 
 type CORSConfig struct {

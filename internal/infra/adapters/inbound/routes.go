@@ -18,6 +18,7 @@ type Handlers struct {
 	User           *controller.UserHandler
 	Establishments *controller.EstablishmentsHandler
 	Checkins       *controller.CheckinsHandler
+	Reviews        *controller.ReviewsHandler
 }
 
 // CreateChiRoutes registers routes using the chi router and returns it.
@@ -50,12 +51,27 @@ func CreateChiRoutes(h Handlers, jwtSecret string, corsAllowedOrigins []string) 
 	// Establishments: list endpoint
 	if h.Establishments != nil {
 		r.Get("/establishments", WithErrorEncoder(h.Establishments.ListEstablishments))
+		r.Get("/establishments/{id}", WithErrorEncoder(h.Establishments.GetEstablishment))
+		r.Get("/establishments/{id}/stats", WithErrorEncoder(h.Establishments.GetStats))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments", WithErrorEncoder(h.Establishments.CreateEstablishment))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments/{id}/claim", WithErrorEncoder(h.Establishments.ClaimOwnership))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/establishments/{id}/highlights", WithErrorEncoder(h.Establishments.CreateHighlight))
+		r.With(auth.RequireAuth(jwtSecret)).Delete("/establishments/{id}/highlights/{reviewId}", WithErrorEncoder(h.Establishments.DeleteHighlight))
 	}
 
 	// Checkins: create (protected) and list user's checkins
 	if h.Checkins != nil {
 		r.With(auth.RequireAuth(jwtSecret)).Post("/checkins", WithErrorEncoder(h.Checkins.CreateCheckin))
 		r.With(auth.RequireAuth(jwtSecret)).Get("/checkins/me", WithErrorEncoder(h.Checkins.ListMyCheckins))
+	}
+
+	// Reviews: create (protected), list by establishment, get by id, like/unlike
+	if h.Reviews != nil {
+		r.With(auth.RequireAuth(jwtSecret)).Post("/reviews", WithErrorEncoder(h.Reviews.CreateReview))
+		r.Get("/establishments/{id}/reviews", WithErrorEncoder(h.Reviews.ListByEstablishment))
+		r.Get("/reviews/{id}", WithErrorEncoder(h.Reviews.GetReview))
+		r.With(auth.RequireAuth(jwtSecret)).Post("/reviews/{id}/like", WithErrorEncoder(h.Reviews.LikeReview))
+		r.With(auth.RequireAuth(jwtSecret)).Delete("/reviews/{id}/like", WithErrorEncoder(h.Reviews.UnlikeReview))
 	}
 
 	return r

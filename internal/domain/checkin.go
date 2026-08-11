@@ -12,6 +12,7 @@ type CheckinRepository interface {
 	Create(ctx context.Context, c *Checkin) error
 	ListByUser(ctx context.Context, userID string) ([]Checkin, error)
 	FindTodayByUserAndEstablishment(ctx context.Context, userID, establishmentID string) (*Checkin, error)
+	GetByID(ctx context.Context, checkinID string) (*Checkin, error)
 }
 
 type Checkin struct {

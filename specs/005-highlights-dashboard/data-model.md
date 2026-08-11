@@ -87,9 +87,30 @@ Null-handling:
 - average should default to `0` if there are no reviews
 - counts should default to `0`
 
-## Authorization Placeholder
+## Authorization Model
 
-Phase 5 requires operator authorization, but the ownership model is still open.
+Phase 5 uses an ownership-based operator rule for MVP.
+
+Current decision:
+
+- `establishments.owner_id` identifies the operator allowed to manage
+  highlights
+- highlight management still depends on an establishment-operator policy
+  interface injected into the use cases
+- ownership claim requires a dedicated administrative `claim_code`
+- preexisting establishments can be adopted through
+  `POST /establishments/:id/claim`, avoiding mandatory manual backfill
+
+Recommended fields:
+
+- `claim_code_hash`
+- `claim_code_expires_at`
+
+Rules:
+
+- the claim code must be verified against a stored hash
+- the claim code should be invalidated after successful use
+- expired claim codes must fail with `403`
 
 Preferred long-term model:
 
@@ -99,8 +120,8 @@ Preferred long-term model:
   - `role`
   - `created_at`
 
-For MVP planning, keep the highlight use cases behind an explicit authorization
-check so the implementation can start with a temporary rule and migrate later.
+This keeps the HTTP and use case contracts stable while leaving room to evolve
+the persistence strategy later.
 
 ## Repository Impact
 
@@ -122,7 +143,7 @@ Migration should:
 
 1. create `highlights`
 2. add constraints and indexes
-3. avoid backfill requirements for MVP
+3. support ownership claim for legacy rows without requiring immediate backfill
 
 ## Open Technical Decisions
 

@@ -16,8 +16,8 @@ type CheckinDTO struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
-func (d *CheckinDTO) ToDomain() *domain.Checkin {
-	return &domain.Checkin{
+func (d *CheckinDTO) ToDomain() (*domain.Checkin, error) {
+	checkin := &domain.Checkin{
 		ID:              d.ID,
 		UserID:          d.UserID,
 		EstablishmentID: d.EstablishmentID,
@@ -26,10 +26,21 @@ func (d *CheckinDTO) ToDomain() *domain.Checkin {
 		CheckedAt:       d.CheckedAt,
 		CreatedAt:       d.CreatedAt,
 	}
+
+	err := checkin.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return checkin, nil
 }
 
-func FromDomain(c *domain.Checkin) *CheckinDTO {
-	return &CheckinDTO{
+func FromDomain(c *domain.Checkin) (*CheckinDTO, error) {
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+
+	dto := &CheckinDTO{
 		ID:              c.ID,
 		UserID:          c.UserID,
 		EstablishmentID: c.EstablishmentID,
@@ -38,4 +49,10 @@ func FromDomain(c *domain.Checkin) *CheckinDTO {
 		CheckedAt:       c.CheckedAt,
 		CreatedAt:       c.CreatedAt,
 	}
+
+	if dto.CreatedAt.IsZero() {
+		dto.CreatedAt = time.Now().UTC()
+	}
+
+	return dto, nil
 }

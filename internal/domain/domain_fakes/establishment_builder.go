@@ -15,6 +15,7 @@ func NewEstablishmentBuilder() *EstablishmentBuilder {
 	lng := -46.633308
 	establishment := &domain.Establishment{
 		ID:        "22222222-2222-4222-8222-222222222222",
+		OwnerID:   "11111111-1111-4111-8111-111111111111",
 		Name:      "Cafe Central",
 		Slug:      "cafe-central",
 		Category:  "cafe",
@@ -36,6 +37,11 @@ func (b *EstablishmentBuilder) WithID(id string) *EstablishmentBuilder {
 
 func (b *EstablishmentBuilder) WithName(name string) *EstablishmentBuilder {
 	b.Builder.Value.Name = name
+	return b
+}
+
+func (b *EstablishmentBuilder) WithOwnerID(ownerID string) *EstablishmentBuilder {
+	b.Builder.Value.OwnerID = ownerID
 	return b
 }
 

@@ -23,6 +23,7 @@ Date: [DATE]
 - DTO persistence boundaries respected:
 - Incremental MVP slice:
 - Acceptance scenarios identified:
+- TDD approach defined:
 
 ## Design
 
@@ -45,9 +46,9 @@ Date: [DATE]
 ## Rollout Sequence
 
 1. Schema and repository groundwork
-2. Use case implementation
-3. HTTP contract and handlers
-4. Tests and validation
+2. Failing tests for the intended behavior
+3. Minimal implementation to satisfy the tests
+4. Refactor and validate targeted test coverage
 
 ## Risks
 
